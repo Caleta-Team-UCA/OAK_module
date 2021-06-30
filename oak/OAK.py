@@ -1,7 +1,10 @@
 from abc import abstractmethod
-from typing import NamedTuple, Optional
+from typing import Optional
 import depthai as dai
 import numpy as np
+from collections import namedtuple
+from OAK.utils import process_frame
+
 
 LIST_LABELS = [
     "background",
@@ -32,21 +35,17 @@ LIST_LABELS = [
 class OAK(dai.Pipeline):
     def __init__(
         self,
-        path_model_body: Optional[
-            str
-        ] = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
-        path_model_face: Optional[
-            str
-        ] = "models/face-detection-openvino_2021.2_4shave.blob",
+        path_model_body: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
+        path_model_face: str = "models/face-detection-openvino_2021.2_4shave.blob",
         path_model_stress: Optional[str] = "models/stress_classifier_2021.2.blob",
     ):
         """Create and configure the parameters of the pipeline.
 
         Parameters
         ----------
-        path_model_body : Optional[str], optional
+        path_model_body : str
             Path to body detection ".blob" model, by default "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
-        path_model_face : Optional[str], optional
+        path_model_face : str
             Path to face detection ".blob" model, by default "models/face-detection-openvino_2021.2_4shave.blob"
         path_model_stress : Optional[str], optional
             Path to stress classification ".blob" model, by default "models/stress_classifier_2021.2.blob"
@@ -54,11 +53,11 @@ class OAK(dai.Pipeline):
         super(OAK, self).__init__()
         self.setOpenVINOVersion(version=dai.OpenVINO.Version.VERSION_2021_1)
 
-        if path_model_body is not None and path_model_face is not None:
-            self._create_body_face(path_model_body, path_model_face)
+        self._create_body_face(path_model_body, path_model_face)
 
         if path_model_stress is not None:
             self._create_stress(path_model_stress)
+            self.stress_bool = True
 
     # ========= PRIVATE =========
     def _create_body_face(self, body_path_model: str, face_path_model: str):
@@ -103,7 +102,6 @@ class OAK(dai.Pipeline):
     @abstractmethod
     def _link_body_face(self):
         """Assigns input and output streams to body and face Neural Networks"""
-
         pass
 
     @abstractmethod
@@ -131,9 +129,9 @@ class OAK(dai.Pipeline):
             Frame used as input of the Pipeline.
             TODO: define type
         """
-        return self.display_output_stream.tryGet()
+        return self.display_out_q.tryGet()
 
-    def get_stress(self) -> float:
+    def get_stress(self, frame) -> float:
         """Get output of stress.
 
         Returns
@@ -141,7 +139,10 @@ class OAK(dai.Pipeline):
         float
             Stress represented by a number between 0 and 1.
         """
-        nn_data = self.stress_output_stream.tryGet()
+
+        img = process_frame(frame, 224, 224)
+        self.stress_in_q.send(img)
+        nn_data = self.stress_out_q.tryGet()
         numpy_nn_data = np.array(nn_data.getFirstLayerFp16())
         return numpy_nn_data[0]
 
@@ -153,7 +154,7 @@ class OAK(dai.Pipeline):
         dai.RawImgDetections
             Face detection.
         """
-        face_data = self.face_output_stream.tryGet()
+        face_data = self.face_out_q.tryGet()
 
         detection = None
 
@@ -176,7 +177,7 @@ class OAK(dai.Pipeline):
         dai.RawImgDetections
             Body detection.
         """
-        body_data = self.body_output_stream.tryGet()
+        body_data = self.body_out_q.tryGet()
         new_detections = []
 
         if body_data is not None:
@@ -193,7 +194,7 @@ class OAK(dai.Pipeline):
         return new_detections
 
     @abstractmethod
-    def get(self) -> NamedTuple:
+    def get(self) -> namedtuple:
         """Get all the results that output the entire Pipeline.
 
         Returns
