@@ -164,27 +164,6 @@ class OAK(dai.Pipeline):
                 detection = detections[0]
                 detection.label = 21
 
-        return detection
-
-    def get_face(self) -> dai.RawImgDetections:
-        """Get face detection.
-
-        Returns
-        -------
-        dai.RawImgDetections
-            Face detection.
-        """
-        face_data = self.face_output_stream.tryGet()
-
-        detection = None
-
-        if face_data is not None:
-            detections = face_data.detections
-
-            if len(detections) > 0:
-                detection = detections[0]
-                detection.label = 21
-
         # TODO: Convertir detection a un np.array o algo así más manejable,
         # no estoy seguro de como se hace
         return detection
