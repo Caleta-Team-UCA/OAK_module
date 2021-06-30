@@ -16,6 +16,7 @@ click==7.1.2
     # via
     #   black
     #   pip-tools
+    #   typer
 colorama==0.4.4
     # via pytest
 depthai==2.5.0.0
@@ -24,6 +25,12 @@ iniconfig==1.1.1
     # via pytest
 mypy-extensions==0.4.3
     # via black
+numpy==1.19.5
+    # via
+    #   oak (setup.py)
+    #   opencv-python
+opencv-python==4.5.2.54
+    # via oak (setup.py)
 packaging==20.9
     # via pytest
 pathspec==0.8.1
@@ -47,6 +54,8 @@ toml==0.10.2
     #   black
     #   pep517
     #   pytest
+typer==0.3.2
+    # via oak (setup.py)
 wheel==0.36.2
     # via pip-tools
 
