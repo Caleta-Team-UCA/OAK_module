@@ -27,14 +27,8 @@ if __name__ == "__main__":
     pipeline = dai.Pipeline()
     pipeline.setOpenVINOVersion(version=dai.OpenVINO.Version.VERSION_2021_1)
 
-    body_in_frame = pipeline.createXLinkIn()
-    body_in_frame.setStreamName("body_input")
-
-    face_in_frame = pipeline.createXLinkIn()
-    face_in_frame.setStreamName("face_input")
-
-    display_in_frame = pipeline.createXLinkIn()
-    display_in_frame.setStreamName("display_input")
+    in_frame = pipeline.createXLinkIn()
+    in_frame.setStreamName("input")
 
     # Create Mobilenet and Face nodes
     nn_body = pipeline.createMobileNetDetectionNetwork()
@@ -48,8 +42,8 @@ if __name__ == "__main__":
 
     # Links
     # Inputs
-    body_in_frame.out.link(nn_body.input)
-    face_in_frame.out.link(nn_face.input)
+    in_frame.out.link(nn_body.input)
+    in_frame.out.link(nn_face.input)
 
     # outputs
     body_out_frame = pipeline.createXLinkOut()
@@ -60,22 +54,14 @@ if __name__ == "__main__":
     face_out_frame.setStreamName("face_out")
     nn_face.out.link(face_out_frame.input)
 
-    display_out_frame = pipeline.createXLinkOut()
-    display_out_frame.setStreamName("display_out")
-    display_in_frame.out.link(display_out_frame.input)
-
     # Initilize pipeline
     device = dai.Device(pipeline)
-    device.setLogLevel(dai.LogLevel.TRACE)
 
     # Queues
-    body_in_q = device.getInputQueue(name="body_input", maxSize=4, blocking=False)
-    face_in_q = device.getInputQueue(name="face_input", maxSize=4, blocking=False)
-    display_in_q = device.getInputQueue(name="display_input", maxSize=4, blocking=False)
+    in_q = device.getInputQueue(name="input")
 
     body_out_q = device.getOutputQueue(name="body_out", maxSize=4, blocking=False)
     face_out_q = device.getOutputQueue(name="face_out", maxSize=4, blocking=False)
-    display_out_q = device.getOutputQueue(name="display_out", maxSize=4, blocking=False)
 
     cap = cv2.VideoCapture(video_path)
     while cap.isOpened():
@@ -88,11 +74,9 @@ if __name__ == "__main__":
         img.setTimestamp(monotonic())
         img.setWidth(300)
         img.setHeight(300)
-        body_in_q.send(img)
-        # face_in_q.send(img)
-        display_in_q.send(img)
+        in_q.send(img)
 
-        # print(body_out_q.tryGet(), face_out_q.tryGet(), display_out_q.tryGet())
+        print(body_out_q.tryGet(), face_out_q.tryGet())
 
         cv2.imshow("rgb", frame)
 
