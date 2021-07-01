@@ -41,10 +41,10 @@ if __name__ == "__main__":
 
     nn_face = pipeline.createMobileNetDetectionNetwork()
     nn_face.setBlobPath(face_path_model)
-    nn_body.setConfidenceThreshold(0.7)
-    nn_body.setNumInferenceThreads(2)
-    nn_body.input.setBlocking(False)
-    nn_body.input.setQueueSize(1)
+    nn_face.setConfidenceThreshold(0.7)
+    nn_face.setNumInferenceThreads(2)
+    nn_face.input.setBlocking(False)
+    nn_face.input.setQueueSize(1)
 
     # Links
     # Inputs
