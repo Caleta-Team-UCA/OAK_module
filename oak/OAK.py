@@ -1,10 +1,11 @@
 from abc import abstractmethod
+from collections import namedtuple
 from typing import Optional
+
 import depthai as dai
 import numpy as np
-from collections import namedtuple
-from oak.utils import process_frame
 
+from oak.utils import process_frame
 
 LIST_LABELS = [
     "background",
@@ -44,11 +45,14 @@ class OAKparent(dai.Pipeline):
         Parameters
         ----------
         path_model_body : str
-            Path to body detection ".blob" model, by default "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
+            Path to body detection ".blob" model, by default
+            "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
         path_model_face : str
-            Path to face detection ".blob" model, by default "models/face-detection-openvino_2021.2_4shave.blob"
+            Path to face detection ".blob" model, by default
+            "models/face-detection-openvino_2021.2_4shave.blob"
         path_model_stress : Optional[str], optional
-            Path to stress classification ".blob" model, by default "models/stress_classifier_2021.2.blob"
+            Path to stress classification ".blob" model, by default
+            "models/stress_classifier_2021.2.blob"
         """
         super(OAKparent, self).__init__()
         self.setOpenVINOVersion(version=dai.OpenVINO.Version.VERSION_2021_1)
