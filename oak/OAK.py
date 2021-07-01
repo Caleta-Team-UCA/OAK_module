@@ -34,6 +34,14 @@ LIST_LABELS = [
 
 
 class OAKparent(dai.Pipeline):
+    device: dai.Device = None
+    in_q: dai.DataInputQueue = None
+    body_out_q: dai.DataOutputQueue = None
+    face_out_q: dai.DataOutputQueue = None
+    display_out_q: dai.DataOutputQueue = None
+    stress_in_q: dai.DataInputQueue = None
+    stress_out_q: dai.DataOutputQueue = None
+
     def __init__(
         self,
         path_model_body: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
