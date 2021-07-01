@@ -1,11 +1,12 @@
-from oak.OAK import OAKparent
-import depthai as dai
-from typing import Optional
-from collections import namedtuple
-import cv2
-from oak.utils import process_frame
-import typer
 import time
+from collections import namedtuple
+
+import cv2
+import depthai as dai
+import typer
+
+from oak.OAK import OAKparent
+from oak.utils import process_frame
 
 PipelineOut = namedtuple("PipelineOut", "display face_detection body_detection stress")
 
@@ -13,6 +14,7 @@ PipelineOut = namedtuple("PipelineOut", "display face_detection body_detection s
 class OAKvideo(OAKparent):
     width: int = 300
     height: int = 300
+    video_path: str = ""
 
     def _create_in_stream(self):
         """Create input Pipeline stream and stress input."""
@@ -20,7 +22,7 @@ class OAKvideo(OAKparent):
         self.in_frame.setStreamName("input")
 
     def _create_stress_in_stream(self):
-        "Create stress input."
+        """Create stress input."""
         self.stress_in_frame = self.createXLinkIn()
         self.stress_in_frame.setStreamName("stress_input")
 
