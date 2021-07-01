@@ -2,10 +2,11 @@ import depthai as dai
 import cv2
 from time import monotonic
 import numpy as np
+from time import sleep
 
 body_path_model = "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
 face_path_model = "models/face-detection-openvino_2021.2_4shave.blob"
-video_path = "videos/22-center-2.mp4"
+video_path = "videos/21-center-2.mp4"
 
 
 def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
@@ -36,9 +37,14 @@ if __name__ == "__main__":
     nn_body.setBlobPath(body_path_model)
     nn_body.setNumInferenceThreads(2)
     nn_body.input.setBlocking(False)
+    nn_body.input.setQueueSize(1)
 
     nn_face = pipeline.createMobileNetDetectionNetwork()
     nn_face.setBlobPath(face_path_model)
+    nn_body.setConfidenceThreshold(0.7)
+    nn_body.setNumInferenceThreads(2)
+    nn_body.input.setBlocking(False)
+    nn_body.input.setQueueSize(1)
 
     # Links
     # Inputs
@@ -58,10 +64,10 @@ if __name__ == "__main__":
     device = dai.Device(pipeline)
 
     # Queues
-    in_q = device.getInputQueue(name="input")
+    in_q = device.getInputQueue(name="input", maxSize=1, blocking=False)
 
-    body_out_q = device.getOutputQueue(name="body_out", maxSize=4, blocking=False)
-    face_out_q = device.getOutputQueue(name="face_out", maxSize=4, blocking=False)
+    body_out_q = device.getOutputQueue(name="body_out", maxSize=1, blocking=True)
+    face_out_q = device.getOutputQueue(name="face_out", maxSize=1, blocking=True)
 
     cap = cv2.VideoCapture(video_path)
     while cap.isOpened():
