@@ -106,7 +106,7 @@ class OAKvideo(OAKparent):
             img = process_frame(frame, self.width, self.height)
             self.in_q.send(img)
 
-            display = display = self.get_display()
+            display = self.get_display()
             face_detection = self.get_face()
             body_detection = self.get_body()
 
@@ -121,6 +121,8 @@ class OAKvideo(OAKparent):
                 body_detection=body_detection,
                 stress=stress,
             )
+        else:
+            print("Video has finished!")
 
 
 def main(
