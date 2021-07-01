@@ -8,20 +8,37 @@ body_path_model = "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
 face_path_model = "models/face-detection-openvino_2021.2_4shave.blob"
 video_path = "videos/21-center-2.mp4"
 
+LIST_LABELS = [
+    "background",
+    "aeroplane",
+    "bicycle",
+    "bird",
+    "boat",
+    "bottle",
+    "bus",
+    "car",
+    "cat",
+    "chair",
+    "cow",
+    "diningtable",
+    "dog",
+    "horse",
+    "motorbike",
+    "person",  # index 15
+    "pottedplant",
+    "sheep",
+    "sofa",
+    "train",
+    "tvmonitor",
+    "face",  # index 21, added by us
+]
 
-def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
-    return cv2.resize(arr, shape).transpose(2, 0, 1).flatten()
 
-
-def process_frame(frame: np.array, width: int, height: int) -> dai.ImgFrame:
-    # Generate ImgFrame to use as input of the Pipeline
-    img = dai.ImgFrame()
-    img.setData(to_planar(frame, (width, height)))
-    img.setTimestamp(monotonic())
-    img.setWidth(width)
-    img.setHeight(height)
-
-    return img
+def frame_norm(frame: np.ndarray, bbox: np.ndarray) -> np.ndarray:
+    """Normalizes the frame"""
+    norm_vals = np.full(len(bbox), frame.shape[0])
+    norm_vals[::2] = frame.shape[1]
+    return (np.clip(np.array(bbox), 0, 1) * norm_vals).astype(int)
 
 
 if __name__ == "__main__":
@@ -30,7 +47,7 @@ if __name__ == "__main__":
 
     cam = pipeline.createColorCamera()
     cam.setPreviewSize(300, 300)
-    cam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_12_MP)
+    cam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
     cam.setInterleaved(False)
     cam.setBoardSocket(dai.CameraBoardSocket.RGB)
     # Define output stream
@@ -84,15 +101,59 @@ if __name__ == "__main__":
     face_out_q = device.getOutputQueue(name="face_out", maxSize=1, blocking=True)
     cv2.namedWindow("rgb", cv2.WINDOW_NORMAL)
     while True:
-        frame = (
-            np.array(cam_out.get().getData())
-            .reshape((3, 300, 300))
-            .transpose(1, 2, 0)
-            .astype(np.uint8)
-        )
-        print(body_out_q.tryGet(), face_out_q.tryGet())
+        cam_frame = cam_out.tryGet()
+        if cam_frame:
+            frame = (
+                np.array(cam_frame.getData())
+                .reshape((3, 300, 300))
+                .transpose(1, 2, 0)
+                .astype(np.uint8)
+            )
 
-        cv2.imshow("rgb", frame)
+            body_detections = body_out_q.tryGet()
+            if body_detections:
+                for d in body_detections.detections:
+                    label = LIST_LABELS[d.label]
+                    if label == "person":
+                        bbox = frame_norm(frame, (d.xmin, d.ymin, d.xmax, d.ymax))
+                        print(bbox, frame.shape)
+
+                        # Esto lo hago  por un bug que tiene en Windows
+                        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                        frame = np.array(frame)
+                        # ===========
+
+                        cv2.rectangle(
+                            frame,
+                            (bbox[0], bbox[1]),
+                            (bbox[2], bbox[3]),
+                            (255, 0, 0),
+                            2,
+                        )
+
+            face_detections = face_out_q.tryGet()
+            if face_detections:
+                if len(face_detections.detections) > 0:
+                    d = face_detections.detections[0]
+
+                    bbox = frame_norm(frame, (d.xmin, d.ymin, d.xmax, d.ymax))
+                    print(bbox, frame.shape)
+
+                    # Esto lo hago  por un bug que tiene en Windows
+                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    frame = np.array(frame)
+                    # ===========
+
+                    cv2.rectangle(
+                        frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2
+                    )
+
+            cv2.imshow("rgb", frame)
+
+        # SImulo algún tipo de procesamiento
+        sleep(0.05)
 
         if cv2.waitKey(1) == ord("q"):
             break
