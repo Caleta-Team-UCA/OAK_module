@@ -1,49 +1,26 @@
-from OAK import OAK
+from oak.OAK import OAKparent
 import depthai as dai
 from typing import Optional
 from collections import namedtuple
 import cv2
-from OAK.utils import process_frame
+from oak.utils import process_frame
 import typer
+import time
 
 PipelineOut = namedtuple("PipelineOut", "display face_detection body_detection stress")
 
 
-class OAKvideo(OAK):
+class OAKvideo(OAKparent):
     width: int = 300
     height: int = 300
-
-    def __init__(
-        self,
-        path_model_body: Optional[
-            str
-        ] = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
-        path_model_face: Optional[
-            str
-        ] = "models/face-detection-openvino_2021.2_4shave.blob",
-        path_model_stress: Optional[str] = "models/stress_classifier_2021.2.blob",
-    ):
-        """Create and configure the parameters of the pipeline.
-
-        Parameters
-        ----------
-        path_model_body : Optional[str], optional
-            Path to body detection ".blob" model, by default "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
-        path_model_face : Optional[str], optional
-            Path to face detection ".blob" model, by default "models/face-detection-openvino_2021.2_4shave.blob"
-        path_model_stress : Optional[str], optional
-            Path to stress classification ".blob" model, by default "models/stress_classifier_2021.2.blob"
-        """
-        super(OAKvideo, self).__init__(
-            path_model_body, path_model_face, path_model_stress
-        )
-        self._create_in_stream(self)
 
     def _create_in_stream(self):
         """Create input Pipeline stream and stress input."""
         self.in_frame = self.createXLinkIn()
         self.in_frame.setStreamName("input")
 
+    def _create_stress_in_stream(self):
+        "Create stress input."
         self.stress_in_frame = self.createXLinkIn()
         self.stress_in_frame.setStreamName("stress_input")
 
@@ -83,25 +60,27 @@ class OAKvideo(OAK):
 
         # Initialize device and pipeline
         self.device = dai.Device(self)
-        self.device.startPipeline()
 
         # Input queue
-        self.in_q = self.getInputQueue(name="input")
-        self.stress_in_q = self.getInputQueue(name="stress_input")
+        self.in_q = self.device.getInputQueue(name="input", maxSize=10, blocking=True)
 
         # Output queues
-        self.body_out_q = self.getOutputQueue(
-            name="body_out", maxSize=4, blocking=False
+        self.body_out_q = self.device.getOutputQueue(
+            name="body_out", maxSize=10, blocking=True
         )
-        self.face_out_q = self.getOutputQueue(
-            name="face_out", maxSize=4, blocking=False
+        self.face_out_q = self.device.getOutputQueue(
+            name="face_out", maxSize=10, blocking=True
         )
-        self.stress_out_q = self.getOutputQueue(
-            name="stress_out", maxSize=4, blocking=False
+        self.display_out_q = self.device.getOutputQueue(
+            name="display_out", maxSize=10, blocking=True
         )
-        self.display_out_q = self.getOutputQueue(
-            name="display_out", maxSize=4, blocking=False
-        )
+
+        if self.stress_bool:
+            self.stress_in_q = self.device.getInputQueue(name="stress_input")
+
+            self.stress_out_q = self.device.getOutputQueue(
+                name="stress_out", maxSize=10, blocking=True
+            )
 
         self.video_path = video_path
 
@@ -146,12 +125,20 @@ def main(
     path_model_body: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     path_model_face: str = "models/face-detection-openvino_2021.2_4shave.blob",
     video_path: str = "videos/22-center-2.mp4",
+    frame_rate: int = 20,
 ):
     video_processor = OAKvideo(path_model_body, path_model_face, None)
     video_processor.start(video_path)
 
-    for result in video_processor.get():
-        print(result)
+    for i, result in enumerate(video_processor.get()):
+        print(i, result)
+        time.sleep(1 / frame_rate)
+
+        if result.display is not None:
+            # TOD: esto no muestra la imagen, arreglar
+            cv2.namedWindow("display", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow("display", 700, 600)
+            cv2.imshow("display", result.display)
 
 
 if __name__ == "__main__":

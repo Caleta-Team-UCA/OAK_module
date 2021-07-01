@@ -3,7 +3,7 @@ from typing import Optional
 import depthai as dai
 import numpy as np
 from collections import namedtuple
-from OAK.utils import process_frame
+from oak.utils import process_frame
 
 
 LIST_LABELS = [
@@ -32,7 +32,7 @@ LIST_LABELS = [
 ]
 
 
-class OAK(dai.Pipeline):
+class OAKparent(dai.Pipeline):
     def __init__(
         self,
         path_model_body: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
@@ -50,14 +50,20 @@ class OAK(dai.Pipeline):
         path_model_stress : Optional[str], optional
             Path to stress classification ".blob" model, by default "models/stress_classifier_2021.2.blob"
         """
-        super(OAK, self).__init__()
+        super(OAKparent, self).__init__()
         self.setOpenVINOVersion(version=dai.OpenVINO.Version.VERSION_2021_1)
 
+        self._create_in_stream()
         self._create_body_face(path_model_body, path_model_face)
 
         if path_model_stress is not None:
+            self._create_stress_in_stream()
             self._create_stress(path_model_stress)
             self.stress_bool = True
+        else:
+            self.stress_bool = False
+
+        self._link_display()
 
     # ========= PRIVATE =========
     def _create_body_face(self, body_path_model: str, face_path_model: str):
@@ -100,6 +106,16 @@ class OAK(dai.Pipeline):
         self._link_stress()
 
     @abstractmethod
+    def _create_in_stream(self):
+        """Create input Pipeline stream."""
+        pass
+
+    @abstractmethod
+    def _create_stress_in_stream(self):
+        "Create stress input."
+        pass
+
+    @abstractmethod
     def _link_body_face(self):
         """Assigns input and output streams to body and face Neural Networks"""
         pass
@@ -120,7 +136,7 @@ class OAK(dai.Pipeline):
         """Initialize and define Pipeline and I/O streams."""
         pass
 
-    def get_display(self) -> any:
+    def get_display(self) -> np.ndarray:
         """Get frame to display.
 
         Returns
@@ -129,7 +145,12 @@ class OAK(dai.Pipeline):
             Frame used as input of the Pipeline.
             TODO: define type
         """
-        return self.display_out_q.tryGet()
+        result = self.display_out_q.tryGet()
+
+        if result is not None:
+            result = result.getFrame()
+
+        return result
 
     def get_stress(self, frame) -> float:
         """Get output of stress.
@@ -169,7 +190,7 @@ class OAK(dai.Pipeline):
         # no estoy seguro de como se hace
         return detection
 
-    def get_body(self) -> dai.RawImgDetections:
+    def get_body(self) -> np.array:
         """Get body detection.
 
         Returns
@@ -188,10 +209,13 @@ class OAK(dai.Pipeline):
                 if label == "person":
                     new_detections.append(detection)
 
-        # TODO: Convertir detection a un np.array o algo así más manejable,
-        # no estoy seguro de como se hace
+        if len(new_detections) > 0:
+            d = new_detections[0]
+            result = (d.xmax, d.xmin, d.ymax, d.ymin)
+        else:
+            result = None
 
-        return new_detections
+        return result
 
     @abstractmethod
     def get(self) -> namedtuple:
