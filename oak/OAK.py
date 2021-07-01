@@ -144,7 +144,7 @@ class OAKparent(dai.Pipeline):
 
     # ========= PUBLIC =========
     @abstractmethod
-    def start(self):
+    def start(self, *args):
         """Initialize and define Pipeline and I/O streams."""
         pass
 
