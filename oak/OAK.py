@@ -3,7 +3,7 @@ from typing import Optional
 import depthai as dai
 import numpy as np
 from collections import namedtuple
-from oak.utils import process_frame
+from oak.utils import process_frame, to_planar, frame_norm
 
 
 LIST_LABELS = [
@@ -33,6 +33,15 @@ LIST_LABELS = [
 
 
 class OAKparent(dai.Pipeline):
+    input_name: str = "input"
+    stress_input_name: str = "stress_input"
+
+    face_output_name: str = "face_out"
+    body_output_name: str = "body_out"
+    stress_output_name: str = "stress_out"
+
+    stress_bool: bool = False
+
     def __init__(
         self,
         path_model_body: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
@@ -54,44 +63,33 @@ class OAKparent(dai.Pipeline):
         self.setOpenVINOVersion(version=dai.OpenVINO.Version.VERSION_2021_1)
 
         self._create_in_stream()
-        self._create_body_face(path_model_body, path_model_face)
+        self._create_detection_network(path_model_body, self.body_output_name)
+        self._create_detection_network(path_model_face, self.face_output_name)
 
         if path_model_stress is not None:
-            self._create_stress_in_stream()
-            self._create_stress(path_model_stress)
+            self._create_stress(path_model_stress, self.stress_output_name)
             self.stress_bool = True
-        else:
-            self.stress_bool = False
-
-        self._link_display()
 
     # ========= PRIVATE =========
-    def _create_body_face(self, body_path_model: str, face_path_model: str):
-        """Initializes neural networks used for detecting bodies and faces
+    def _create_detection_network(self, model_path: str, name: str):
+        """Initializes neural networks used for detecting entities from frames.
+
         Parameters
         ----------
-        body_path_model : str
+        model_path : str
             Path to the body blob model
-        face_path_model : str
-            Path to the face blob model
         """
-        # BODY NN
         # Define a neural network that will make predictions based on the source frames
-        self.nn_body = self.createMobileNetDetectionNetwork()
-        self.nn_body.setConfidenceThreshold(0.7)
-        self.nn_body.setBlobPath(body_path_model)
-        self.nn_body.setNumInferenceThreads(2)
-        self.nn_body.input.setBlocking(False)
+        nn = self.createMobileNetDetectionNetwork()
+        nn.setConfidenceThreshold(0.7)
+        nn.setBlobPath(model_path)
+        nn.setNumInferenceThreads(2)
+        nn.input.setBlocking(False)
 
-        # FACE IN
-        # Define a neural network that will make predictions based on the source frames
-        self.nn_face = self.createMobileNetDetectionNetwork()
-        self.nn_face.setBlobPath(face_path_model)
+        self._link_input(nn)
+        self._link_output(nn, name)
 
-        # LINKS
-        self._link_body_face()
-
-    def _create_stress(self, stress_path_model: str):
+    def _create_stress(self, stress_path_model: str, name: str):
         """Initializes neural network used for classifying stress.
         Parameters
         ----------
@@ -99,11 +97,34 @@ class OAKparent(dai.Pipeline):
             Path to the stress blob model
         """
         # Define a neural network that will make predictions based on the source frames
-        self.nn_stress = self.createNeuralNetwork()
-        self.nn_stress.setBlobPath(stress_path_model)
+        nn_stress = self.createNeuralNetwork()
+        nn_stress.setBlobPath(stress_path_model)
+        nn_stress.setNumInferenceThreads(2)
+        nn_stress.input.setBlocking(False)
+        nn_stress.input.setQueueSize(1)
 
         # LINKS
-        self._link_stress()
+        self._create_and_link_stress_input(nn_stress)
+        self._link_output(nn_stress, name)
+
+    def _create_and_link_stress_input(self, nn_stress: dai.NeuralNetwork):
+        """Assigns input and output streams to stress Neural Networks"""
+        stress_in_frame = self.createXLinkIn()
+        stress_in_frame.setStreamName(self.stress_input_name)
+        stress_in_frame.out.link(nn_stress.input)
+
+    def _link_output(self, nn: dai.MobileNetDetectionNetwork, name: str):
+        """Assigns an output stream to given Neural Network
+        Parameters
+        ----------
+        nn : depthai.MobileNetDetectionNetwork
+            Neural Network
+        name : str
+            Label of the output stream
+        """
+        nn_out = self.createXLinkOut()
+        nn_out.setStreamName(name)
+        nn.out.link(nn_out.input)
 
     @abstractmethod
     def _create_in_stream(self):
@@ -111,48 +132,21 @@ class OAKparent(dai.Pipeline):
         pass
 
     @abstractmethod
-    def _create_stress_in_stream(self):
-        "Create stress input."
-        pass
-
-    @abstractmethod
-    def _link_body_face(self):
-        """Assigns input and output streams to body and face Neural Networks"""
-        pass
-
-    @abstractmethod
-    def _link_stress(self):
-        """Assigns input and output streams to stress Neural Networks"""
-        pass
-
-    @abstractmethod
-    def _link_display(self):
-        """Assigns input and output streams to frame display"""
-        pass
-
-    # ========= PUBLIC =========
-    @abstractmethod
-    def start(self):
-        """Initialize and define Pipeline and I/O streams."""
-        pass
-
-    def get_display(self) -> np.ndarray:
-        """Get frame to display.
-
-        Returns
-        -------
-        any
-            Frame used as input of the Pipeline.
-            TODO: define type
+    def _link_input(self, nn: dai.MobileNetDetectionNetwork):
+        """Assigns an input stream to given Neural Network
+        Parameters
+        ----------
+        nn : depthai.MobileNetDetectionNetwork
+            Neural Network
         """
-        result = self.display_out_q.tryGet()
+        pass
 
-        if result is not None:
-            result = result.getFrame()
-
-        return result
-
-    def get_stress(self, frame) -> float:
+    def _get_stress(
+        self,
+        face_frame: np.ndarray,
+        stress_in_q: dai.DataInputQueue,
+        stress_out_q: dai.DataOutputQueue,
+    ) -> float:
         """Get output of stress.
 
         Returns
@@ -161,13 +155,22 @@ class OAKparent(dai.Pipeline):
             Stress represented by a number between 0 and 1.
         """
 
-        img = process_frame(frame, 224, 224)
-        self.stress_in_q.send(img)
-        nn_data = self.stress_out_q.tryGet()
-        numpy_nn_data = np.array(nn_data.getFirstLayerFp16())
-        return numpy_nn_data[0]
+        nn_data = dai.NNData()
+        nn_data.setLayer("prob", to_planar(face_frame, (224, 224)))
 
-    def get_face(self) -> dai.RawImgDetections:
+        stress_in_q.send(nn_data)
+
+        stress_nn_out = stress_out_q.tryGet()
+        if stress_nn_out:
+            stress_labels = ["non_stress", "stress"]
+            stress_value = np.array(stress_nn_out.getFirstLayerFp16())[0]
+            label = stress_labels[stress_value > 0.5]
+
+            return label, stress_value
+        else:
+            return None
+
+    def _get_face(self, face_out_q: dai.DataOutputQueue) -> tuple[float]:
         """Get face detection.
 
         Returns
@@ -175,22 +178,18 @@ class OAKparent(dai.Pipeline):
         dai.RawImgDetections
             Face detection.
         """
-        face_data = self.face_out_q.tryGet()
+        bbox = None
 
-        detection = None
+        face_detections = face_out_q.tryGet()
+        if face_detections:
+            if len(face_detections.detections) > 0:
+                d = face_detections.detections[0]
 
-        if face_data is not None:
-            detections = face_data.detections
+                bbox = (d.xmin, d.ymin, d.xmax, d.ymax)
 
-            if len(detections) > 0:
-                detection = detections[0]
-                detection.label = 21
+        return bbox
 
-        # TODO: Convertir detection a un np.array o algo así más manejable,
-        # no estoy seguro de como se hace
-        return detection
-
-    def get_body(self) -> np.array:
+    def _get_body(self, body_out_q: dai.DataOutputQueue) -> tuple[float]:
         """Get body detection.
 
         Returns
@@ -198,24 +197,19 @@ class OAKparent(dai.Pipeline):
         dai.RawImgDetections
             Body detection.
         """
-        body_data = self.body_out_q.tryGet()
-        new_detections = []
+        bbox = None
 
-        if body_data is not None:
-            detections = body_data.detections
-
-            for detection in detections:
-                label = LIST_LABELS[detection.label]
+        body_detections = body_out_q.tryGet()
+        if body_detections:
+            for d in body_detections.detections:
+                label = LIST_LABELS[d.label]
                 if label == "person":
-                    new_detections.append(detection)
+                    bbox = (d.xmin, d.ymin, d.xmax, d.ymax)
+                    break
 
-        if len(new_detections) > 0:
-            d = new_detections[0]
-            result = (d.xmax, d.xmin, d.ymax, d.ymin)
-        else:
-            result = None
+        return bbox
 
-        return result
+    # ========= PUBLIC =========
 
     @abstractmethod
     def get(self) -> namedtuple:

@@ -1,11 +1,10 @@
 from oak.OAK import OAKparent
 import depthai as dai
-from typing import Optional
 from collections import namedtuple
 import cv2
-from oak.utils import process_frame
+from oak.utils import process_frame, frame_norm
 import typer
-import time
+from time import sleep
 
 PipelineOut = namedtuple("PipelineOut", "display face_detection body_detection stress")
 
@@ -15,76 +14,20 @@ class OAKvideo(OAKparent):
     height: int = 300
 
     def _create_in_stream(self):
-        """Create input Pipeline stream and stress input."""
+        """Create input Pipeline stream."""
         self.in_frame = self.createXLinkIn()
-        self.in_frame.setStreamName("input")
+        self.in_frame.setStreamName(self.input_name)
 
-    def _create_stress_in_stream(self):
-        "Create stress input."
-        self.stress_in_frame = self.createXLinkIn()
-        self.stress_in_frame.setStreamName("stress_input")
+    def _link_input(self, nn: dai.MobileNetDetectionNetwork):
+        """Assigns an input stream to given Neural Network
+        Parameters
+        ----------
+        nn : depthai.MobileNetDetectionNetwork
+            Neural Network
+        """
+        self.in_frame.out.link(nn.input)
 
-    def _link_body_face(self):
-        """Assigns input and output streams to body and face Neural Networks"""
-        # Link inputs
-        self.in_frame.out.link(self.nn_body.input)
-        self.in_frame.out.link(self.nn_face.input)
-
-        # Link outputs
-        body_out_frame = self.createXLinkOut()
-        body_out_frame.setStreamName("body_out")
-        self.nn_body.out.link(body_out_frame.input)
-
-        face_out_frame = self.createXLinkOut()
-        face_out_frame.setStreamName("face_out")
-        self.nn_face.out.link(face_out_frame.input)
-
-    def _link_stress(self):
-        """Assigns input and output streams to stress Neural Networks"""
-        # Link input
-        self.stress_in_frame.out.link(self.nn_stress.input)
-
-        # Link output
-        stress_out_frame = self.createXLinkOut()
-        stress_out_frame.setStreamName("stress_out")
-        self.nn_stress.out.link(stress_out_frame.input)
-
-    def _link_display(self):
-        """Assigns input and output streams to frame display"""
-        display_out_frame = self.createXLinkOut()
-        display_out_frame.setStreamName("display_out")
-        self.in_frame.out.link(display_out_frame.input)
-
-    def start(self, video_path: str):
-        """Initialize and define Pipeline and I/O streams."""
-
-        # Initialize device and pipeline
-        self.device = dai.Device(self)
-
-        # Input queue
-        self.in_q = self.device.getInputQueue(name="input", maxSize=10, blocking=True)
-
-        # Output queues
-        self.body_out_q = self.device.getOutputQueue(
-            name="body_out", maxSize=10, blocking=True
-        )
-        self.face_out_q = self.device.getOutputQueue(
-            name="face_out", maxSize=10, blocking=True
-        )
-        self.display_out_q = self.device.getOutputQueue(
-            name="display_out", maxSize=10, blocking=True
-        )
-
-        if self.stress_bool:
-            self.stress_in_q = self.device.getInputQueue(name="stress_input")
-
-            self.stress_out_q = self.device.getOutputQueue(
-                name="stress_out", maxSize=10, blocking=True
-            )
-
-        self.video_path = video_path
-
-    def get(self) -> namedtuple:
+    def get(self, video_path, show_results: bool = False) -> namedtuple:
         """Get all the results that output the entire Pipeline.
         This function works as a generator, so it can be called several times.
 
@@ -92,9 +35,32 @@ class OAKvideo(OAKparent):
         -------
         NamedTuple
             Named Tuple containing all the data processed by the device.
+            `display`: input frame.
+            `face_detection`: bounding box corners of the face.
+            `body_detection`: bounding box corners of the body.
+            `stress`: stress value and label
         """
 
-        cap = cv2.VideoCapture(self.video_path)
+        # Initialize device and pipeline
+        device = dai.Device(self)
+
+        # Input queue
+        in_q = device.getInputQueue(name="input", maxSize=1, blocking=False)
+
+        # Output queues
+        body_out_q = device.getOutputQueue(name="body_out", maxSize=1, blocking=True)
+        face_out_q = device.getOutputQueue(name="face_out", maxSize=1, blocking=True)
+
+        if self.stress_bool:
+            stress_in_q = device.getInputQueue(
+                name="stress_input", maxSize=1, blocking=False
+            )
+
+            stress_out_q = device.getOutputQueue(
+                name="stress_out", maxSize=1, blocking=True
+            )
+
+        cap = cv2.VideoCapture(video_path)
         while cap.isOpened():
             read_correctly, frame = cap.read()
 
@@ -102,43 +68,84 @@ class OAKvideo(OAKparent):
                 break
 
             img = process_frame(frame, self.width, self.height)
-            self.in_q.send(img)
+            in_q.send(img)
 
-            display = display = self.get_display()
-            face_detection = self.get_face()
-            body_detection = self.get_body()
+            face_bbox = self._get_face(face_out_q)
+            if face_bbox is not None:
+                face_bbox = frame_norm(frame, face_bbox)
 
-            if self.stress_bool:
-                stress = self.get_stress(face_detection)
+            body_bbox = self._get_body(body_out_q)
+            if body_bbox is not None:
+                body_bbox = frame_norm(frame, body_bbox)
+
+            if face_bbox is not None and self.stress_bool:
+                face = frame[
+                    face_bbox[1] : face_bbox[3],
+                    face_bbox[0] : face_bbox[2],
+                    :,
+                ]
+                stress = self._get_stress(face, stress_in_q, stress_out_q)
             else:
                 stress = None
 
+            if show_results:
+                show_frame = frame.copy()
+
+                if body_bbox is not None:
+                    show_frame = cv2.rectangle(
+                        show_frame,
+                        (body_bbox[0], body_bbox[1]),
+                        (body_bbox[2], body_bbox[3]),
+                        (255, 0, 0),
+                        2,
+                    )
+
+                if face_bbox is not None:
+                    show_frame = cv2.rectangle(
+                        show_frame,
+                        (face_bbox[0], face_bbox[1]),
+                        (face_bbox[2], face_bbox[3]),
+                        (36, 255, 12),
+                        2,
+                    )
+
+                    if stress is not None:
+                        show_frame = cv2.putText(
+                            show_frame,
+                            f"{stress[0]} {stress[1]:.2}",
+                            (face_bbox[0], face_bbox[1] - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.9,
+                            (36, 255, 12),
+                            2,
+                        )
+
+                cv2.imshow("", show_frame)
+
+                if cv2.waitKey(1) == ord("q"):
+                    break
+
             yield PipelineOut(
-                display=display,
-                face_detection=face_detection,
-                body_detection=body_detection,
+                display=frame,
+                face_detection=face_bbox,
+                body_detection=body_bbox,
                 stress=stress,
             )
 
 
 def main(
-    path_model_body: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
-    path_model_face: str = "models/face-detection-openvino_2021.2_4shave.blob",
+    body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
+    face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
+    stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
     video_path: str = "videos/22-center-2.mp4",
-    frame_rate: int = 20,
 ):
-    video_processor = OAKvideo(path_model_body, path_model_face, None)
-    video_processor.start(video_path)
+    video_processor = OAKvideo(body_path_model, face_path_model, stress_path_model)
 
-    for i, result in enumerate(video_processor.get()):
-        print(i, result)
-        time.sleep(1 / frame_rate)
-
-        if result.display is not None:
-            # TOD: esto no muestra la imagen, arreglar
-            cv2.namedWindow("display", cv2.WINDOW_NORMAL)
-            cv2.resizeWindow("display", 700, 600)
-            cv2.imshow("display", result.display)
+    for i, result in enumerate(video_processor.get(video_path, True)):
+        print(i, result.face_detection, result.body_detection, result.stress)
+        # Aquí simulamos que se estuviera haciendo
+        # algún tipo de procesamiento con los datos
+        sleep(0.05)
 
 
 if __name__ == "__main__":
