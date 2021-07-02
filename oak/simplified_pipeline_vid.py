@@ -146,7 +146,7 @@ if __name__ == "__main__":
                     frame = np.array(frame)
                     # ===========
 
-                    cv2.rectangle(
+                    frame = cv2.rectangle(
                         frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 0, 0), 2
                     )
 
