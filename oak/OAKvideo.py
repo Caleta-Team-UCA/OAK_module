@@ -45,19 +45,23 @@ class OAKvideo(OAKparent):
         device = dai.Device(self)
 
         # Input queue
-        in_q = device.getInputQueue(name="input", maxSize=1, blocking=False)
+        in_q = device.getInputQueue(name=self.input_name, maxSize=1, blocking=False)
 
         # Output queues
-        body_out_q = device.getOutputQueue(name="body_out", maxSize=1, blocking=True)
-        face_out_q = device.getOutputQueue(name="face_out", maxSize=1, blocking=True)
+        body_out_q = device.getOutputQueue(
+            name=self.body_output_name, maxSize=1, blocking=True
+        )
+        face_out_q = device.getOutputQueue(
+            name=self.face_output_name, maxSize=1, blocking=True
+        )
 
         if self.stress_bool:
             stress_in_q = device.getInputQueue(
-                name="stress_input", maxSize=1, blocking=False
+                name=self.stress_input_name, maxSize=1, blocking=False
             )
 
             stress_out_q = device.getOutputQueue(
-                name="stress_out", maxSize=1, blocking=True
+                name=self.stress_output_name, maxSize=1, blocking=True
             )
 
         cap = cv2.VideoCapture(video_path)
@@ -88,6 +92,7 @@ class OAKvideo(OAKparent):
             else:
                 stress = None
 
+            # Code for showing results in CV2
             if show_results:
                 show_frame = frame.copy()
 
