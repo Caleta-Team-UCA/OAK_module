@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Optional
+from typing import Optional, Tuple
 import depthai as dai
 import numpy as np
 from collections import namedtuple
@@ -170,7 +170,7 @@ class OAKparent(dai.Pipeline):
         else:
             return None
 
-    def _get_face(self, face_out_q: dai.DataOutputQueue) -> tuple[float]:
+    def _get_face(self, face_out_q: dai.DataOutputQueue) -> Tuple[float]:
         """Get face detection.
 
         Returns
@@ -189,7 +189,7 @@ class OAKparent(dai.Pipeline):
 
         return bbox
 
-    def _get_body(self, body_out_q: dai.DataOutputQueue) -> tuple[float]:
+    def _get_body(self, body_out_q: dai.DataOutputQueue) -> Tuple[float]:
         """Get body detection.
 
         Returns
