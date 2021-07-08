@@ -5,13 +5,13 @@ import cv2
 import depthai as dai
 import typer
 
-from oak.OAK import OAKparent
+from oak.pipeline.oak_parent import OAKParent
 from oak.utils.opencv import process_frame, frame_norm
 
 PipelineOut = namedtuple("PipelineOut", "display face_detection body_detection stress")
 
 
-class OAKvideo(OAKparent):
+class OAKVideo(OAKParent):
     width: int = 300
     height: int = 300
 
@@ -146,7 +146,7 @@ def main(
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
     video_path: str = "videos/22-center-2.mp4",
 ):
-    video_processor = OAKvideo(body_path_model, face_path_model, stress_path_model)
+    video_processor = OAKVideo(body_path_model, face_path_model, stress_path_model)
 
     for i, result in enumerate(video_processor.get(video_path, True)):
         print(i, result.face_detection, result.body_detection, result.stress)

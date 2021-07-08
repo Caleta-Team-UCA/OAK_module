@@ -6,7 +6,7 @@ import depthai as dai
 import numpy as np
 import typer
 
-from oak.OAK import LIST_LABELS
+from oak.utils.params import LIST_LABELS
 from oak.utils.opencv import frame_norm, to_planar
 
 

@@ -6,34 +6,10 @@ import depthai as dai
 import numpy as np
 
 from oak.utils.opencv import to_planar
-
-LIST_LABELS = [
-    "background",
-    "aeroplane",
-    "bicycle",
-    "bird",
-    "boat",
-    "bottle",
-    "bus",
-    "car",
-    "cat",
-    "chair",
-    "cow",
-    "diningtable",
-    "dog",
-    "horse",
-    "motorbike",
-    "person",  # index 15
-    "pottedplant",
-    "sheep",
-    "sofa",
-    "train",
-    "tvmonitor",
-    "face",  # index 21, added by us
-]
+from oak.utils.params import LIST_LABELS
 
 
-class OAKparent(dai.Pipeline):
+class OAKParent(dai.Pipeline):
     input_name: str = "input"
     stress_input_name: str = "stress_input"
 
@@ -63,7 +39,7 @@ class OAKparent(dai.Pipeline):
             Path to stress classification ".blob" model, by default
             "models/stress_classifier_2021.2.blob"
         """
-        super(OAKparent, self).__init__()
+        super(OAKParent, self).__init__()
         self.setOpenVINOVersion(version=dai.OpenVINO.Version.VERSION_2021_1)
 
         self._create_in_stream()

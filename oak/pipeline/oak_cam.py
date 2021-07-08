@@ -7,7 +7,7 @@ import depthai as dai
 import numpy as np
 import typer
 
-from oak.OAK import OAKparent
+from oak.pipeline.oak_parent import OAKParent
 from oak.utils.opencv import frame_norm
 
 PipelineOut = namedtuple(
@@ -16,7 +16,7 @@ PipelineOut = namedtuple(
 )
 
 
-class OAKcam(OAKparent):
+class OAKCam(OAKParent):
     width: int = 300
     height: int = 300
 
@@ -46,7 +46,7 @@ class OAKcam(OAKparent):
             Path to stress classification ".blob" model, by default
             "models/stress_classifier_2021.2.blob"
         """
-        super(OAKcam, self).__init__(
+        super(OAKCam, self).__init__(
             path_model_body, path_model_face, path_model_stress
         )
 
@@ -317,7 +317,7 @@ def main(
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
 ):
-    cam_processor = OAKcam(body_path_model, face_path_model, stress_path_model)
+    cam_processor = OAKCam(body_path_model, face_path_model, stress_path_model)
 
     for i, result in enumerate(cam_processor.get(True)):
         print(
