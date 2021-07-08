@@ -1,12 +1,14 @@
-from oak.OAK import OAKparent
-import depthai as dai
 from collections import namedtuple
-import cv2
-from oak.utils import frame_norm
-import typer
 from time import sleep
 from typing import Iterable, Optional
+
+import cv2
+import depthai as dai
 import numpy as np
+import typer
+
+from oak.OAK import OAKparent
+from oak.utils import frame_norm
 
 PipelineOut = namedtuple(
     "PipelineOut",
@@ -35,11 +37,14 @@ class OAKcam(OAKparent):
         Parameters
         ----------
         path_model_body : str
-            Path to body detection ".blob" model, by default "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
+            Path to body detection ".blob" model, by default
+            "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
         path_model_face : str
-            Path to face detection ".blob" model, by default "models/face-detection-openvino_2021.2_4shave.blob"
+            Path to face detection ".blob" model, by default
+            "models/face-detection-openvino_2021.2_4shave.blob"
         path_model_stress : Optional[str], optional
-            Path to stress classification ".blob" model, by default "models/stress_classifier_2021.2.blob"
+            Path to stress classification ".blob" model, by default
+            "models/stress_classifier_2021.2.blob"
         """
         super(OAKcam, self).__init__(
             path_model_body, path_model_face, path_model_stress
@@ -116,8 +121,8 @@ class OAKcam(OAKparent):
         calculator = self.createSpatialLocationCalculator()
         calculator.setWaitForConfigInput(False)
         # We need to be accurate, so we use a very small ROI
-        topLeft = dai.Point2f(0.4, 0.4)
-        bottomRight = dai.Point2f(0.42, 0.42)
+        top_left = dai.Point2f(0.4, 0.4)
+        bottom_right = dai.Point2f(0.42, 0.42)
 
         calculator.setWaitForConfigInput(False)
         config = dai.SpatialLocationCalculatorConfigData()
@@ -126,7 +131,7 @@ class OAKcam(OAKparent):
         config.depthThresholds.lowerThreshold = 600
         config.depthThresholds.upperThreshold = 900
 
-        config.roi = dai.Rect(topLeft, bottomRight)
+        config.roi = dai.Rect(top_left, bottom_right)
         calculator.initialConfig.addROI(config)
 
         # Link Inputs
@@ -151,7 +156,8 @@ class OAKcam(OAKparent):
 
         return frame
 
-    def _get_depth(self, depth_out_q: dai.DataOutputQueue):
+    @staticmethod
+    def _get_depth(depth_out_q: dai.DataOutputQueue):
         depth_frame = depth_out_q.get().getFrame()
 
         depth_frame = cv2.normalize(
@@ -162,7 +168,8 @@ class OAKcam(OAKparent):
 
         return depth_frame
 
-    def _get_calculator(self, calculator_out_q: dai.DataOutputQueue):
+    @staticmethod
+    def _get_calculator(calculator_out_q: dai.DataOutputQueue):
         results = calculator_out_q.tryGet()
 
         if results is not None:
