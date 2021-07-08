@@ -1,10 +1,11 @@
 from abc import abstractmethod
-from typing import Optional, Tuple
+from collections import namedtuple
+from typing import Optional, Tuple, Union, List, Any
+
 import depthai as dai
 import numpy as np
-from collections import namedtuple
-from oak.utils import process_frame, to_planar, frame_norm
 
+from oak.utils import to_planar
 
 LIST_LABELS = [
     "background",
@@ -53,11 +54,14 @@ class OAKparent(dai.Pipeline):
         Parameters
         ----------
         path_model_body : str
-            Path to body detection ".blob" model, by default "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
+            Path to body detection ".blob" model, by default
+            "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
         path_model_face : str
-            Path to face detection ".blob" model, by default "models/face-detection-openvino_2021.2_4shave.blob"
+            Path to face detection ".blob" model, by default
+            "models/face-detection-openvino_2021.2_4shave.blob"
         path_model_stress : Optional[str], optional
-            Path to stress classification ".blob" model, by default "models/stress_classifier_2021.2.blob"
+            Path to stress classification ".blob" model, by default
+            "models/stress_classifier_2021.2.blob"
         """
         super(OAKparent, self).__init__()
         self.setOpenVINOVersion(version=dai.OpenVINO.Version.VERSION_2021_1)
@@ -141,12 +145,12 @@ class OAKparent(dai.Pipeline):
         """
         pass
 
+    @staticmethod
     def _get_stress(
-        self,
         face_frame: np.ndarray,
         stress_in_q: dai.DataInputQueue,
         stress_out_q: dai.DataOutputQueue,
-    ) -> float:
+    ) -> Optional[Tuple[Union[str, List[str]], Any]]:
         """Get output of stress.
 
         Returns
@@ -170,7 +174,10 @@ class OAKparent(dai.Pipeline):
         else:
             return None
 
-    def _get_face(self, face_out_q: dai.DataOutputQueue) -> Tuple[float]:
+    @staticmethod
+    def _get_face(
+        face_out_q: dai.DataOutputQueue,
+    ) -> Optional[Tuple[Any, Any, Any, Any]]:
         """Get face detection.
 
         Returns
@@ -189,7 +196,10 @@ class OAKparent(dai.Pipeline):
 
         return bbox
 
-    def _get_body(self, body_out_q: dai.DataOutputQueue) -> Tuple[float]:
+    @staticmethod
+    def _get_body(
+        body_out_q: dai.DataOutputQueue,
+    ) -> Optional[Tuple[Any, Any, Any, Any]]:
         """Get body detection.
 
         Returns
