@@ -1,8 +1,10 @@
-import depthai as dai
-import cv2
 from time import monotonic
-import numpy as np
 from time import sleep
+
+import cv2
+import depthai as dai
+import numpy as np
+import typer
 
 body_path_model = "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
 face_path_model = "models/face-detection-openvino_2021.2_4shave.blob"
@@ -57,7 +59,7 @@ def frame_norm(frame: np.ndarray, bbox: np.ndarray) -> np.ndarray:
     return (np.clip(np.array(bbox), 0, 1) * norm_vals).astype(int)
 
 
-if __name__ == "__main__":
+def main():
     pipeline = dai.Pipeline()
     pipeline.setOpenVINOVersion(version=dai.OpenVINO.Version.VERSION_2021_1)
 
@@ -199,3 +201,7 @@ if __name__ == "__main__":
 
         if cv2.waitKey(1) == ord("q"):
             break
+
+
+if __name__ == "__main__":
+    typer.run(main)
