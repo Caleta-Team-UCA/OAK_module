@@ -1,10 +1,12 @@
-from oak.OAK import OAKparent
-import depthai as dai
 from collections import namedtuple
-import cv2
-from oak.utils import process_frame, frame_norm
-import typer
 from time import sleep
+
+import cv2
+import depthai as dai
+import typer
+
+from oak.OAK import OAKparent
+from oak.utils import process_frame, frame_norm
 
 PipelineOut = namedtuple("PipelineOut", "display face_detection body_detection stress")
 
@@ -27,7 +29,7 @@ class OAKvideo(OAKparent):
         """
         self.in_frame.out.link(nn.input)
 
-    def get(self, video_path, show_results: bool = False) -> namedtuple:
+    def get(self, video_path: str, show_results: bool = False) -> namedtuple:
         """Get all the results that output the entire Pipeline.
         This function works as a generator, so it can be called several times.
 

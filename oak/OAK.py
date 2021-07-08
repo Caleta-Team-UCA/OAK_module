@@ -222,7 +222,7 @@ class OAKparent(dai.Pipeline):
     # ========= PUBLIC =========
 
     @abstractmethod
-    def get(self) -> namedtuple:
+    def get(self, *args, **kwargs) -> namedtuple:
         """Get all the results that output the entire Pipeline.
 
         Returns
