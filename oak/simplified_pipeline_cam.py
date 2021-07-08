@@ -5,44 +5,14 @@ import depthai as dai
 import numpy as np
 import typer
 
-body_path_model = "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
-face_path_model = "models/face-detection-openvino_2021.2_4shave.blob"
-video_path = "videos/21-center-2.mp4"
-
-LIST_LABELS = [
-    "background",
-    "aeroplane",
-    "bicycle",
-    "bird",
-    "boat",
-    "bottle",
-    "bus",
-    "car",
-    "cat",
-    "chair",
-    "cow",
-    "diningtable",
-    "dog",
-    "horse",
-    "motorbike",
-    "person",  # index 15
-    "pottedplant",
-    "sheep",
-    "sofa",
-    "train",
-    "tvmonitor",
-    "face",  # index 21, added by us
-]
+from oak.OAK import LIST_LABELS
+from oak.utils.opencv import frame_norm
 
 
-def frame_norm(frame: np.ndarray, bbox: np.ndarray) -> np.ndarray:
-    """Normalizes the frame"""
-    norm_vals = np.full(len(bbox), frame.shape[0])
-    norm_vals[::2] = frame.shape[1]
-    return (np.clip(np.array(bbox), 0, 1) * norm_vals).astype(int)
-
-
-def main():
+def main(
+    body_path_model="models/mobilenet-ssd_openvino_2021.2_8shave.blob",
+    face_path_model="models/face-detection-openvino_2021.2_4shave.blob",
+):
     pipeline = dai.Pipeline()
     pipeline.setOpenVINOVersion(version=dai.OpenVINO.Version.VERSION_2021_1)
 

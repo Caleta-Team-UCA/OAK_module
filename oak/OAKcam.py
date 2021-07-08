@@ -8,7 +8,7 @@ import numpy as np
 import typer
 
 from oak.OAK import OAKparent
-from oak.utils import frame_norm
+from oak.utils.opencv import frame_norm
 
 PipelineOut = namedtuple(
     "PipelineOut",

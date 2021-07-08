@@ -6,7 +6,7 @@ import depthai as dai
 import typer
 
 from oak.OAK import OAKparent
-from oak.utils import process_frame, frame_norm
+from oak.utils.opencv import process_frame, frame_norm
 
 PipelineOut = namedtuple("PipelineOut", "display face_detection body_detection stress")
 

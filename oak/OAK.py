@@ -5,7 +5,7 @@ from typing import Optional, Tuple, Union, List, Any
 import depthai as dai
 import numpy as np
 
-from oak.utils import to_planar
+from oak.utils.opencv import to_planar
 
 LIST_LABELS = [
     "background",

@@ -6,60 +6,16 @@ import depthai as dai
 import numpy as np
 import typer
 
-body_path_model = "models/mobilenet-ssd_openvino_2021.2_8shave.blob"
-face_path_model = "models/face-detection-openvino_2021.2_4shave.blob"
-stress_path_model = "models/mobilenet_stress_classifier_2021.2.blob"
-video_path = "videos/21-center-1.mp4"
-
-LIST_LABELS = [
-    "background",
-    "aeroplane",
-    "bicycle",
-    "bird",
-    "boat",
-    "bottle",
-    "bus",
-    "car",
-    "cat",
-    "chair",
-    "cow",
-    "diningtable",
-    "dog",
-    "horse",
-    "motorbike",
-    "person",  # index 15
-    "pottedplant",
-    "sheep",
-    "sofa",
-    "train",
-    "tvmonitor",
-    "face",  # index 21, added by us
-]
+from oak.OAK import LIST_LABELS
+from oak.utils.opencv import frame_norm, to_planar
 
 
-def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
-    return cv2.resize(arr, shape).transpose(2, 0, 1).flatten()
-
-
-def process_frame(frame: np.array, width: int, height: int) -> dai.ImgFrame:
-    # Generate ImgFrame to use as input of the Pipeline
-    img = dai.ImgFrame()
-    img.setData(to_planar(frame, (width, height)))
-    img.setTimestamp(monotonic())
-    img.setWidth(width)
-    img.setHeight(height)
-
-    return img
-
-
-def frame_norm(frame: np.ndarray, bbox: np.ndarray) -> np.ndarray:
-    """Normalizes the frame"""
-    norm_vals = np.full(len(bbox), frame.shape[0])
-    norm_vals[::2] = frame.shape[1]
-    return (np.clip(np.array(bbox), 0, 1) * norm_vals).astype(int)
-
-
-def main():
+def main(
+    body_path_model="models/mobilenet-ssd_openvino_2021.2_8shave.blob",
+    face_path_model="models/face-detection-openvino_2021.2_4shave.blob",
+    stress_path_model="models/mobilenet_stress_classifier_2021.2.blob",
+    video_path="videos/22-center-2.mp4",
+):
     pipeline = dai.Pipeline()
     pipeline.setOpenVINOVersion(version=dai.OpenVINO.Version.VERSION_2021_1)
 
