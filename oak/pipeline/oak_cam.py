@@ -146,7 +146,20 @@ class OAKCam(OAKParent):
         calc_out.setStreamName(calculator_name)
         calculator.out.link(calc_out.input)
 
-    def _get_cam_preview(self, cam_out_q: dai.DataOutputQueue):
+    def _get_cam_preview(self, cam_out_q: dai.DataOutputQueue) -> np.array:
+        """Returns the image from the ouptut camera node,
+        resized to custom size
+
+        Parameters
+        ----------
+        cam_out_q : dai.DataOutputQueue
+            Camera output node
+
+        Returns
+        -------
+        np.array
+            Image in custom size
+        """
         frame = (
             np.array(cam_out_q.get().getData())
             .reshape((3, self.height, self.width))
@@ -157,7 +170,19 @@ class OAKCam(OAKParent):
         return frame
 
     @staticmethod
-    def _get_depth(depth_out_q: dai.DataOutputQueue):
+    def _get_depth(depth_out_q: dai.DataOutputQueue) -> np.array:
+        """Returns the depth image from the output depth node
+
+        Parameters
+        ----------
+        depth_out_q : dai.DataOutputQueue
+            Depth output node
+
+        Returns
+        -------
+        np.array
+            Depth image
+        """
         depth_frame = depth_out_q.get().getFrame()
 
         depth_frame = cv2.normalize(
