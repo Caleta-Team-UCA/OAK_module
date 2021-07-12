@@ -3,9 +3,9 @@ from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
-import pandas as pd
 
 
 def moving_average(ser: np.array, size: int = 24) -> np.array:
