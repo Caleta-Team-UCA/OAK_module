@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
+import pandas as pd
 
 
 def moving_average(ser: np.array, size: int = 24) -> np.array:
@@ -61,6 +62,10 @@ class Series:
         return moving_average(self.ser, size=self.frequency)
 
     @property
+    def rollmax(self) -> np.ndarray:
+        return pd.Series(self.ser).rolling(self.frequency).max().values
+
+    @property
     def list(self) -> list:
         return [-1 if math.isnan(x) else x for x in self.ser.tolist()]
 
@@ -68,9 +73,12 @@ class Series:
         """Plots the line of given axes"""
         (self.line,) = ax.plot(self.ser, label=self.label)
 
-    def update_plot(self):
+    def update_plot(self, method: str = None):
         """Updates the plotted line"""
-        self.line.set_ydata(self.movavg)
+        if (method is None) or (method == "movavg"):
+            self.line.set_ydata(self.movavg)
+        elif "max" in method:
+            self.line.set_ydata(self.rollmax)
 
 
 class PlotSeries:
@@ -99,10 +107,10 @@ class PlotSeries:
         self.ax.legend()
         plt.show(block=False)
 
-    def update(self):
+    def update(self, method: str = None):
         """Updates the figure"""
         for ser in self.list_ser:
-            ser.update_plot()
+            ser.update_plot(method=method)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
