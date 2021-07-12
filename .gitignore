@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Videos
+videos/
+
+# Pycharm
+.idea/
