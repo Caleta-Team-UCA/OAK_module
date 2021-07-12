@@ -17,3 +17,21 @@ pip-compile --extra=dev
 ## Structure
 
 ![Classes diagram](classes_diagram.png?raw=true)
+
+### Scripts
+
+With the OAK camera plugged into your device, run the following command from the root folder:
+
+```
+python oak/run_pipeline.py
+```
+
+The camera will start recording, and you will see on screen two windows. The first shows the image on real-time, with a bounding box surrounding the face and other around the body. The second window depicts the depth map of the very same image.
+
+Instead of recording on real-time, you can feed a video to the script:
+
+```
+python oak/run_pipeline.py --video-path PATH
+```
+
+In this case, only one window is shown: the image with the bounding boxes. No depth map can be computed from a pre-recorded video.
