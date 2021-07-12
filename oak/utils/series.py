@@ -50,6 +50,9 @@ class Series:
     def __str__(self) -> str:
         return f"Series of length {len(self)}. Last values are: {self.ser[-10:]}"
 
+    def __getitem__(self, i: int):
+        return self.ser[i]
+
     def append(self, x: float):
         self.ser = np.append(self.ser[1:], x)
 
