@@ -6,7 +6,6 @@ from oak.utils.series import PlotSeries, Series
 
 class Activity:
     status: list = [0, 0, 0, 0]  # arm left, right, leg left, right
-    _timer: int = 0
 
     def __init__(
         self,
@@ -29,15 +28,6 @@ class Activity:
         self.ser_down = Series(size=size, frequency=frequency, label="Down")
         # Initialize series of score
         self.ser_score = Series(size=size, frequency=frequency, label="Mob. score")
-
-        # Store update frequency, initialize timer
-        self.frequency = frequency
-        # Plot series
-        self.plot_series = PlotSeries(
-            [self.ser_score],
-            xlim=(0, size),
-            ylim=(0, 1),
-        )
 
     def _update_size_series(
         self,
@@ -117,8 +107,3 @@ class Activity:
         self._update_size_series(body_detections, face_detections)
         # Update score
         self._update_score_series()
-        # Plot the evolution of box size
-        self._timer += 1
-        if self._timer >= self.frequency:
-            self.plot_series.update(method="max")
-            self._timer = 0
