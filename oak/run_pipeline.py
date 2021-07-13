@@ -50,45 +50,31 @@ def main(
 
     if video_path is None:
         processor = OAKCam(body_path_model, face_path_model, stress_path_model)
-
-        for i, result in enumerate(processor.get(True)):
-            print(
-                i,
-                result.face_detection,
-                result.body_detection,
-                result.stress,
-                result.calculator_results,
-            )
-
-            if result.body_detection is not None and result.face_detection is not None:
-                act.update(result.body_detection, result.face_detection)
-
-            if result.stress is not None:
-                stre.update(result.stress[0] == "stress")
-
-            if i % frequency == 0:
-                plot_series.update("movavg")
-
-            # Aquí simulamos que se estuviera haciendo
-            # algún tipo de procesamiento con los datos
-            sleep(0.1)
+        processor_parameters = {"show_results": True}
     else:
         processor = OAKVideo(body_path_model, face_path_model, stress_path_model)
-        for i, result in enumerate(processor.get(video_path, True)):
-            print(i, result.face_detection, result.body_detection, result.stress)
+        processor_parameters = {"video_path": video_path, "show_results": True}
 
-            if result.body_detection is not None and result.face_detection is not None:
-                act.update(result.body_detection, result.face_detection)
+    for i, result in enumerate(processor.get(**processor_parameters)):
+        # Process activity
+        if result.body_detection is not None and result.face_detection is not None:
+            act.update(result.body_detection, result.face_detection)
 
-            if result.stress is not None:
-                stre.update(result.stress[0] == "stress")
+        # Process stress
+        if result.stress is not None:
+            stre.update(result.stress[0] == "stress")
 
-            if i % frequency == 0:
-                plot_series.update("movavg")
+        # Process breath
+        if video_path is not None:
+            # TODO: Aquí habrá que añadir el código de la parte de BREATH
+            pass
 
-            # Aquí simulamos que se estuviera haciendo
-            # algún tipo de procesamiento con los datos
-            sleep(0.05)
+        if i % frequency == 0:
+            plot_series.update("movavg")
+
+        # Aquí simulamos que se estuviera haciendo
+        # algún tipo de procesamiento con los datos
+        sleep(0.1)
 
 
 if __name__ == "__main__":
