@@ -11,7 +11,8 @@ setup(
         "opencv-python==4.5.2.54",
         "numpy==1.19.5",
         "typer==0.3.2",
-        "matplotlib==3.4.2"
+        "matplotlib==3.4.2",
+        "pandas==1.3.0"
     ],
     extras_require={
         "dev": [
