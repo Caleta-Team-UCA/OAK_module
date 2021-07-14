@@ -1,14 +1,14 @@
-from oak.utils.series import Series
+import pandas as pd
+from oak.process.process_base import ProcessBase
 
 
-class Stress:
+class Stress(ProcessBase):
+    name: str = "Stress"
+
     def __init__(
         self,
-        size: int = 240,
-        frequency: int = 12,
     ):
-
-        self.ser_score = Series(size=size, frequency=frequency, label="Stress score")
+        self.ser_score = pd.Series(name="Stress score")
 
     def update(self, stress_score: int):
         """Updates the stress analysis with new information.
@@ -20,4 +20,11 @@ class Stress:
         """
 
         # Add new score
-        self.ser_score.append(stress_score)
+        self.ser_score = self.ser_score.append(
+            pd.Series([stress_score], index=[self.total_elements]),
+        )
+
+        self.total_elements += 1
+
+    def restart_series(self):
+        self.ser_score = self.ser_score.iloc[-int(len(self.ser_score) / 4) :]

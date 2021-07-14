@@ -1,16 +1,16 @@
 from typing import Iterable
 
 import numpy as np
-from oak.utils.series import PlotSeries, Series
+import pandas as pd
+from oak.process.process_base import ProcessBase
 
 
-class Activity:
+class Activity(ProcessBase):
     status: list = [0, 0, 0, 0]  # arm left, right, leg left, right
+    name: str = "Activity"
 
     def __init__(
         self,
-        size: int = 240,
-        frequency: int = 12,
     ):
         """Performs the pose analysis. Detects the move of each limb
 
@@ -22,12 +22,20 @@ class Activity:
             Rate at which plots are updated, in frames, by default 24
         """
         # Initialize series of box dimensions
-        self.ser_right = Series(size=size, frequency=frequency, label="Right")
-        self.ser_left = Series(size=size, frequency=frequency, label="Left")
-        self.ser_up = Series(size=size, frequency=frequency, label="Up")
-        self.ser_down = Series(size=size, frequency=frequency, label="Down")
-        # Initialize series of score
-        self.ser_score = Series(size=size, frequency=frequency, label="Mob. score")
+        self.ser_right = pd.Series(name="Right")
+        self.ser_left = pd.Series(name="Left")
+        self.ser_up = pd.Series(name="Up")
+        self.ser_down = pd.Series(name="Down")
+
+    def restart_series(self):
+        size = -int(len(self.ser_right) / 4)
+        # Initialize series of box dimensions
+        self.ser_right = self.ser_right.iloc[size:]
+        self.ser_left = self.ser_left.iloc[size:]
+        self.ser_up = self.ser_up.iloc[size:]
+        self.ser_down = self.ser_down.iloc[size:]
+        # Initialize pd.series of score
+        self.ser_score = self.ser_score.iloc[size:]
 
     def _update_size_series(
         self,
@@ -53,24 +61,30 @@ class Activity:
             down = (body_detections[3] - face_detections[3]) / size
         except (IndexError, TypeError) as er:
             # If not, the size is the last value
-            right = self.ser_right.ser[-1]
-            left = self.ser_left.ser[-1]
-            up = self.ser_up.ser[-1]
-            down = self.ser_down.ser[-1]
+            right = self.ser_right.iloc[-1]
+            left = self.ser_left.iloc[-1]
+            up = self.ser_up.iloc[-1]
+            down = self.ser_down.iloc[-1]
         # Update the series of box sizes
-        self.ser_right.append(right)
-        self.ser_left.append(left)
-        self.ser_up.append(up)
-        self.ser_down.append(down)
+        self.ser_right = self.ser_right.append(
+            pd.Series([right], index=[self.total_elements])
+        )
+        self.ser_left = self.ser_left.append(
+            pd.Series([left], index=[self.total_elements])
+        )
+        self.ser_up = self.ser_up.append(pd.Series([up], index=[self.total_elements]))
+        self.ser_down = self.ser_down.append(
+            pd.Series([down], index=[self.total_elements])
+        )
 
     def _update_score_series(self):
         """Updates score status"""
         # Store the previous status
         status_before = self.status.copy()
         # Get the last values of each series
-        right = self.ser_right[-1]
-        left = self.ser_left[-1]
-        down = self.ser_down[-1]
+        right = self.ser_right.iloc[-1]
+        left = self.ser_left.iloc[-1]
+        down = self.ser_down.iloc[-1]
         if down < 3.1:
             self.status[2] = 0
             self.status[3] = 0
@@ -87,7 +101,11 @@ class Activity:
             self.status[1] = 1
         # Compute the mobility score as the number of status that have changed
         mob_score = np.mean(np.abs(np.array(self.status) - np.array(status_before)))
-        self.ser_score.append(mob_score)
+        self.ser_score = self.ser_score.append(
+            pd.Series([mob_score], index=[self.total_elements])
+        )
+
+        self.total_elements += 1
 
     def update(
         self,
