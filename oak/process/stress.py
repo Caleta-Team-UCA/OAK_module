@@ -27,4 +27,5 @@ class Stress(ProcessBase):
         self.total_elements += 1
 
     def restart_series(self):
+        """Clean up the series and restart them with fewer values"""
         self.ser_score = self.ser_score.iloc[-int(len(self.ser_score) / 4) :]

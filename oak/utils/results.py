@@ -7,16 +7,12 @@ COLORS = ["salmon", "cornflowerblue", "forestgreen"]
 
 class PlotSeries:
     def __init__(self, list_ser: List):
-        """Plots a list of Series on a figure, that can be updated on real time
+        """Plots studies made on a figure, that can be updated on real time
 
         Parameters
         ----------
         list_ser : list
-            List of neocam.utils.series Series
-        xlim : tuple, optional
-            Limits of X axis, by default None
-        ylim : tuple, optional
-            Limits of Y axis, by default None
+            List of ProcessBase objects
         """
         self.fig = plt.figure()
 

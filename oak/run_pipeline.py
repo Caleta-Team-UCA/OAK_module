@@ -26,7 +26,7 @@ def main(
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
     video_path: str = "videos/22-center-2.mp4",
-    frequency: int = 5,
+    frequency: float = 5,
     plot_results: bool = True,
     post_server: bool = False,
 ):
@@ -47,10 +47,12 @@ def main(
         "models/stress_classifier_2021.2.blob"
     video_path : str, optional
         Path to the video file. If None provided, uses the cam. By default None
-    frequency : int, optional
-        Rate at which plots are updated, in seconds, by default 5
+    frequency : float, optional
+        Rate at which plots are updated and values are sent to the server, in seconds, by default 5
     plot_results : bool, optional
         Whether to plot results or not.
+    post_server : bool, optional
+        Wheter to send results to the server or not.
     """
     act = Activity()
     stre = Stress()

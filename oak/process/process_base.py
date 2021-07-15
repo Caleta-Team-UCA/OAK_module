@@ -8,13 +8,16 @@ class ProcessBase:
 
     @abstractmethod
     def restart_series(self):
+        """Clean up the series and restart them with fewer values"""
         pass
 
     @abstractmethod
     def update(self):
+        """Updates the analysis with new information."""
         pass
 
     def get_moving_average(self):
+        """Get moving average of the scores"""
         return (
             self.ser_score.rolling(window=int(len(self.ser_score) / 6))
             .mean()
@@ -23,4 +26,5 @@ class ProcessBase:
 
     @property
     def score(self):
+        """Get score series."""
         return self.ser_score
