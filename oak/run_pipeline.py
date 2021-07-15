@@ -1,12 +1,24 @@
 from time import sleep, time
+from requests import post
 
 import typer
 
-from oak.utils.results import PlotSeries
+from oak.utils.results import PlotSeries, send_to_server
 from oak.pipeline.oak_cam import OAKCam
 from oak.pipeline.oak_video import OAKVideo
 from oak.process.activity import Activity
 from oak.process.stress import Stress
+
+# TODO: meter este diccionario en un config, para poder modificarlo más fácilmente
+server_url = "vai.uca.es/event"
+post_params = {
+    "name": "Juan",
+    "comments": "",
+    "anomaly": False,
+    "type": "",
+    "value": 0,
+    "babyid": 0,
+}
 
 
 def main(
@@ -16,6 +28,7 @@ def main(
     video_path: str = "videos/22-center-2.mp4",
     frequency: int = 5,
     plot_results: bool = True,
+    post_server: bool = False,
 ):
     """Runs the OAK pipeline, streaming from a video file or from the camera, if
     no video file is provided. The pipeline shows on screen the video on real time,
@@ -68,8 +81,16 @@ def main(
             # TODO: Aquí habrá que añadir el código de la parte de BREATH
             pass
 
-        if plot_results and time() - start_time >= frequency:
-            plot_series.update("movavg")
+        if time() - start_time >= frequency:
+            if plot_results:
+                plot_series.update("movavg")
+
+            if post_server:
+                post_params["stress"] = stre.get_moving_average().tolist()
+                post_params["act"] = act.get_moving_average().tolist()
+                response = post(server_url, data=post_params)
+                print(response)
+
             act.restart_series()
             stre.restart_series()
             start_time = time()
