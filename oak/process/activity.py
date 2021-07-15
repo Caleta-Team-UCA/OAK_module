@@ -77,28 +77,31 @@ class Activity(ProcessBase):
             pd.Series([down], index=[self.total_elements])
         )
 
+    @property
+    def right_arm(self):
+        return np.sqrt(np.power(self.ser_right, 2) + np.power(self.ser_up, 2))
+
+    @property
+    def left_arm(self):
+        return np.sqrt(np.power(self.ser_left, 2) + np.power(self.ser_up, 2))
+
+    @property
+    def right_leg(self):
+        return np.sqrt(np.power(self.ser_left, 2) + np.power(self.ser_down, 2))
+
+    @property
+    def left_leg(self):
+        return np.sqrt(np.power(self.ser_left, 2) + np.power(self.ser_down, 2))
+
     def _update_score_series(self):
         """Updates score status"""
         # Store the previous status
         status_before = self.status.copy()
-        # Get the last values of each series
-        right = self.ser_right.iloc[-1]
-        left = self.ser_left.iloc[-1]
-        down = self.ser_down.iloc[-1]
-        if down < 3.1:
-            self.status[2] = 0
-            self.status[3] = 0
-        else:
-            self.status[2] = 1
-            self.status[3] = 1
-        if left < 0.6:
-            self.status[0] = 0
-        else:
-            self.status[0] = 1
-        if right < 0.6:
-            self.status[1] = 0
-        else:
-            self.status[1] = 1
+        # Update the status
+        self.status[0] = 0 if self.left_arm.iloc[-1] < 0.6 else 1
+        self.status[1] = 0 if self.right_arm.iloc[-1] < 0.6 else 1
+        self.status[2] = 0 if self.left_leg.iloc[-1] < 3.1 else 1
+        self.status[3] = 0 if self.right_leg.iloc[-1] < 3.1 else 1
         # Compute the mobility score as the number of status that have changed
         mob_score = np.mean(np.abs(np.array(self.status) - np.array(status_before)))
         self.ser_score = self.ser_score.append(
