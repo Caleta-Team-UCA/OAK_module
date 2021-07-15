@@ -1,22 +1,14 @@
-from oak.utils.series import PlotSeries, Series
+import pandas as pd
+from oak.process.process_base import ProcessBase
 
-class Stress:
-    _timer: int = 0
 
-    def __init__(self,
-        size: int = 240,
-        frequency: int = 12,):
-    
-        self.ser_score = Series(size = size, frequency=frequency, label = "Stress score")
+class Stress(ProcessBase):
+    name: str = "Stress"
 
-        # Store update frequency, initialize timer
-        self.frequency = frequency
-        # Plot series
-        self.plot_series = PlotSeries(
-            [self.ser_score],
-            xlim=(0, size),
-            ylim=(0, 1),
-        )
+    def __init__(
+        self,
+    ):
+        self.ser_score = pd.Series(name="Stress score")
 
     def update(self, stress_score: int):
         """Updates the stress analysis with new information.
@@ -28,10 +20,11 @@ class Stress:
         """
 
         # Add new score
-        self.ser_score.append(stress_score)
-        
-        # Plot evolution
-        self._timer += 1
-        if self._timer >= self.frequency:
-            self.plot_series.update(method="movavg")
-            self._timer = 0
+        self.ser_score = self.ser_score.append(
+            pd.Series([stress_score], index=[self.total_elements]),
+        )
+
+        self.total_elements += 1
+
+    def restart_series(self):
+        self.ser_score = self.ser_score.iloc[-int(len(self.ser_score) / 4) :]
