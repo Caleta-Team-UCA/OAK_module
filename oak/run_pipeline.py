@@ -70,7 +70,7 @@ def main(
     start_time = time()
 
     for i, result in enumerate(processor.get(**processor_parameters)):
-        # Process activityq
+        # Process activity
         if result.body_detection is not None and result.face_detection is not None:
             act.update(result.body_detection, result.face_detection)
 
