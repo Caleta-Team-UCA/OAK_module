@@ -5,7 +5,7 @@ import typer
 
 from oak.utils.results import PlotSeries
 from oak.pipeline.oak_cam import OAKCam
-from oak.pipeline.oak_video import OAKVideo
+from oak.pipeline.oak_video_v2 import OAKVideo
 from oak.process.activity import Activity
 from oak.process.stress import Stress
 
@@ -25,7 +25,7 @@ def main(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
-    video_path: str = "videos/22-center-2.mp4",
+    video_path: str = "videos_3_cams/22",
     frequency: float = 5,
     plot_results: bool = True,
     post_server: bool = False,
@@ -79,9 +79,7 @@ def main(
             stre.update(result.stress[0] == "stress")
 
         # Process breath
-        if video_path is not None:
-            # TODO: Aquí habrá que añadir el código de la parte de BREATH
-            pass
+        # TODO: Aquí habrá que añadir el código de la parte de BREATH
 
         if time() - start_time >= frequency:
             if plot_results:
