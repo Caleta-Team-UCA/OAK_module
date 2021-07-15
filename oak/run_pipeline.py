@@ -13,7 +13,7 @@ def main(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
-    video_path: str = "videos/22-center-2.mp4",
+    video_path: str = None,  # "videos/22-center-2.mp4",
     frequency: int = 5,
     plot_results: bool = True,
 ):
@@ -55,7 +55,7 @@ def main(
     start_time = time()
 
     for i, result in enumerate(processor.get(**processor_parameters)):
-        # Process activityq
+        # Process activity
         if result.body_detection is not None and result.face_detection is not None:
             act.update(result.body_detection, result.face_detection)
 
