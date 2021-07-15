@@ -3,7 +3,7 @@ from requests import post
 
 import typer
 
-from oak.utils.results import PlotSeries, send_to_server
+from oak.utils.results import PlotSeries
 from oak.pipeline.oak_cam import OAKCam
 from oak.pipeline.oak_video import OAKVideo
 from oak.process.activity import Activity
