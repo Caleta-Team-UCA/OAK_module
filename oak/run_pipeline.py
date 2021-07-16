@@ -7,6 +7,7 @@ from oak.pipeline.oak_cam import OAKCam
 from oak.pipeline.oak_video import OAKVideo
 from oak.process.activity import Activity
 from oak.process.stress import Stress
+from oak.process.breath import Breath, BreathConfig
 
 
 def main(
@@ -39,11 +40,16 @@ def main(
     plot_results : bool, optional
         Whether to plot results or not.
     """
+
     act = Activity()
     stre = Stress()
+    plot_list = [stre, act]
+    if video_path is None:
+        breath = Breath(BreathConfig())
+        plot_list.append(breath)
 
     if plot_results:
-        plot_series = PlotSeries([stre, act])
+        plot_series = PlotSeries(plot_list)
 
     if video_path is None:
         processor = OAKCam(body_path_model, face_path_model, stress_path_model)
@@ -64,14 +70,15 @@ def main(
             stre.update(result.stress[0] == "stress")
 
         # Process breath
-        if video_path is not None:
-            # TODO: Aquí habrá que añadir el código de la parte de BREATH
-            pass
+        if video_path is None:
+            breath.update(result.face_detection, result.depth, result.calculator_results)
+            processor_parameters['new_config'] = [ breath.get_breath_config().topLeft, breath.get_breath_config().bottomRight ]
 
         if plot_results and time() - start_time >= frequency:
             plot_series.update("movavg")
             act.restart_series()
             stre.restart_series()
+            breath.restart_series()
             start_time = time()
 
         # Aquí simulamos que se estuviera haciendo
