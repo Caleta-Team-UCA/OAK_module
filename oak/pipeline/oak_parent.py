@@ -13,7 +13,7 @@ from oak.utils.params import LIST_LABELS
 
 class OAKParent(dai.Pipeline):
     # Breath roi corners
-    breath_roi_corners: tuple[float] = (0.5, 0.4, 0.52, 0.42)
+    breath_roi_corners: tuple[float] = (0.5, 0.3, 0.52, 0.32)
 
     input_name: str = "input"
     stress_input_name: str = "stress_input"
