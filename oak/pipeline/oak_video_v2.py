@@ -106,13 +106,13 @@ class OAKVideo(OAKParent):
 
         # Input queue
         color_in_q = device.getInputQueue(
-            name=self.color_cam_name, maxSize=4, blocking=False
+            name=self.color_cam_name, maxSize=1, blocking=False
         )
         left_in_q = device.getInputQueue(
-            name=self.left_cam_name, maxSize=4, blocking=False
+            name=self.left_cam_name, maxSize=1, blocking=False
         )
         right_in_q = device.getInputQueue(
-            name=self.right_cam_name, maxSize=4, blocking=False
+            name=self.right_cam_name, maxSize=1, blocking=False
         )
 
         calculator_config_q = device.getInputQueue(
