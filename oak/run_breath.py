@@ -15,8 +15,7 @@ def main(
         processor = OAKCam(body_path_model, face_path_model, stress_path_model)
         for i, result in enumerate(processor.get(
             True,
-            [ breath.get_breath_config().topLeft, breath.get_breath_config().bottomRight ],
-            [ breath.get_breath_config().xmin, breath.get_breath_config().xmax, breath.get_breath_config().ymin, breath.get_breath_config().ymax ]
+            [ breath.get_breath_config().topLeft, breath.get_breath_config().bottomRight ]
         )):
             breath.update(
                 result.face_detection, result.depth, result.calculator_results
