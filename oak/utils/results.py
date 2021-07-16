@@ -45,7 +45,7 @@ class PlotSeries:
         """Updates the figure"""
         for name, ser_data in self.ser_plot_data.items():
             ser = ser_data["object"]
-            moving_mean = ser.score.rolling(window=10).mean().to_numpy()
+            moving_mean = ser.get_moving_average()
             ser_data["ax"].plot(
                 ser.score.index.to_numpy(),
                 moving_mean,
