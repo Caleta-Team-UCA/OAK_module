@@ -70,7 +70,7 @@ def main(
             stre.update(result.stress[0] == "stress")
 
         # Process breath
-        if video_path is not None:
+        if video_path is None:
             breath.update(result.face_detection, result.depth, result.calculator_results)
             processor_parameters['new_config'] = [ breath.get_breath_config().topLeft, breath.get_breath_config().bottomRight ]
 
