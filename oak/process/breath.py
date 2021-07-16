@@ -123,7 +123,7 @@ class Breath(ProcessBase):
 
         if face_detections is not None and calculator_results is not None:
             distance = self._get_depth_roi(calculator_results)
-            print("Distance: " + str(distance))
+            # print("Distance: " + str(distance))
 
             self.ser_score = self.ser_score.append(
                 pd.Series([distance], index=[self.total_elements])
