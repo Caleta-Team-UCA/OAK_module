@@ -8,6 +8,7 @@ from oak.pipeline.oak_cam import OAKCam
 from oak.pipeline.oak_video_v2 import OAKVideo
 from oak.process.activity import Activity
 from oak.process.stress import Stress
+from oak.process.breath import Breath, BreathConfig
 
 # TODO: meter este diccionario en un config, para poder modificarlo más fácilmente
 server_url = "vai.uca.es/event"
@@ -54,11 +55,16 @@ def main(
     post_server : bool, optional
         Wheter to send results to the server or not.
     """
+
     act = Activity()
     stre = Stress()
+    plot_list = [stre, act]
+    if video_path is None:
+        breath = Breath(BreathConfig())
+        plot_list.append(breath)
 
     if plot_results:
-        plot_series = PlotSeries([stre, act])
+        plot_series = PlotSeries(plot_list)
 
     if video_path is None:
         processor = OAKCam(body_path_model, face_path_model, stress_path_model)
@@ -79,7 +85,14 @@ def main(
             stre.update(result.stress[0] == "stress")
 
         # Process breath
-        # TODO: Aquí habrá que añadir el código de la parte de BREATH
+        if video_path is None:
+            breath.update(
+                result.face_detection, result.depth, result.calculator_results
+            )
+            processor_parameters["new_config"] = [
+                breath.get_breath_config().topLeft,
+                breath.get_breath_config().bottomRight,
+            ]
 
         if time() - start_time >= frequency:
             if plot_results:
@@ -93,6 +106,7 @@ def main(
 
             act.restart_series()
             stre.restart_series()
+            breath.restart_series()
             start_time = time()
 
         # Aquí simulamos que se estuviera haciendo
