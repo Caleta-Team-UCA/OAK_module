@@ -1,4 +1,3 @@
-import depthai as dai
 import numpy as np
 import pandas as pd
 
@@ -6,14 +5,14 @@ from typing import Iterable, List
 from oak.process.process_base import ProcessBase
 
 
-class BreathConfig():
+class BreathConfig:
     # Width and height
     height = 480
     width = 640
 
     # We need to be accurate, so we use a very small ROI
-    topLeft = dai.Point2f(0.4, 0.4)
-    bottomRight = dai.Point2f(0.42, 0.42)
+    topLeft = {"x": 0.4, "y": 0.4}
+    bottomRight = {"x": 0.42, "y": 0.42}
 
     # Size of the ROI
     width_roi = 20
@@ -46,55 +45,78 @@ class Breath(ProcessBase):
     def restart_series(self):
         self.ser_score = self.ser_score.iloc[-int(len(self.ser_score) / 4) :]
 
-    def _get_roi_coordinates(
-        self,
-        face_detections: Iterable[int]
-    ):
+    def _get_roi_coordinates(self, face_detections: Iterable[int]):
         # ROI coordinates
         # width_roi is the size of the ROI, user-defined
         # dx and dy can be change interactively using the WASD keys
-        self.breath_config.xmin = int(face_detections[0] + self.breath_config.dx * (face_detections[2] - face_detections[0]) / 2) - int(self.breath_config.width_roi / 2)
-        self.breath_config.ymin = int(face_detections[3] + self.breath_config.dy * (face_detections[3] - face_detections[1]))
+        self.breath_config.xmin = int(
+            face_detections[0]
+            + self.breath_config.dx * (face_detections[2] - face_detections[0]) / 2
+        ) - int(self.breath_config.width_roi / 2)
+        self.breath_config.ymin = int(
+            face_detections[3]
+            + self.breath_config.dy * (face_detections[3] - face_detections[1])
+        )
         self.breath_config.xmax = self.breath_config.xmin + self.breath_config.width_roi
         self.breath_config.ymax = self.breath_config.ymin + self.breath_config.width_roi
 
         # Section needed to catch some errors when the ROI is outside the frame. In such situations the ROI is kept inside
         if self.breath_config.xmin > 1:
-            self.breath_config.topLeft.x = self.breath_config.xmin / self.breath_config.width
+            self.breath_config.topLeft["x"] = (
+                self.breath_config.xmin / self.breath_config.width
+            )
         else:
-            self.breath_config.topLeft.x = 1 / self.breath_config.width
-            self.breath_config.bottomRight.x = self.breath_config.topLeft.x + self.breath_config.width_roi
+            self.breath_config.topLeft["x"] = 1 / self.breath_config.width
+            self.breath_config.bottomRight["x"] = (
+                self.breath_config.topLeft["x"] + self.breath_config.width_roi
+            )
 
         if self.breath_config.ymin > 1:
-            self.breath_config.topLeft.y = self.breath_config.ymin / self.breath_config.height
+            self.breath_config.topLeft["y"] = (
+                self.breath_config.ymin / self.breath_config.height
+            )
         else:
-            self.breath_config.topLeft.y = 1 / self.breath_config.height
-            self.breath_config.bottomRight.y = self.breath_config.topLeft.y + self.breath_config.width_roi
+            self.breath_config.topLeft["y"] = 1 / self.breath_config.height
+            self.breath_config.bottomRight["y"] = (
+                self.breath_config.topLeft["y"] + self.breath_config.width_roi
+            )
 
         if self.breath_config.xmax < self.breath_config.width:
-            self.breath_config.bottomRight.x = self.breath_config.xmax / self.breath_config.width
+            self.breath_config.bottomRight["x"] = (
+                self.breath_config.xmax / self.breath_config.width
+            )
         else:
-            self.breath_config.bottomRight.x = self.breath_config.width / self.breath_config.width
-            self.breath_config.topLeft.x = self.breath_config.bottomRight.x - self.breath_config.width_roi
+            self.breath_config.bottomRight["x"] = (
+                self.breath_config.width / self.breath_config.width
+            )
+            self.breath_config.topLeft["x"] = (
+                self.breath_config.bottomRight["x"] - self.breath_config.width_roi
+            )
 
         if self.breath_config.ymax < self.breath_config.height:
-            self.breath_config.bottomRight.y = self.breath_config.ymax / self.breath_config.height
+            self.breath_config.bottomRight["y"] = (
+                self.breath_config.ymax / self.breath_config.height
+            )
         else:
-            self.breath_config.bottomRight.y = self.breath_config.height / self.breath_config.height
-            self.breath_config.topLeft.y = self.breath_config.bottomRight.y - self.breath_config.width_roi
+            self.breath_config.bottomRight["y"] = (
+                self.breath_config.height / self.breath_config.height
+            )
+            self.breath_config.topLeft["y"] = (
+                self.breath_config.bottomRight["y"] - self.breath_config.width_roi
+            )
 
-    def _get_depth_roi(
-        self,
-        calculator_results: List[int]
-    ) -> int:
+    def _get_depth_roi(self, calculator_results: List[int]) -> int:
         # Measure depth from stereo-matching between left-right cameras and adds the value to the variable z
-        return int(calculator_results[len(calculator_results) - 1].spatialCoordinates.z) / 10
+        return (
+            int(calculator_results[len(calculator_results) - 1].spatialCoordinates.z)
+            / 10
+        )
 
     def update(
         self,
         face_detections: Iterable[int],
         depth_frame: np.array,
-        calculator_results: List[int]
+        calculator_results: List[int],
     ):
         if face_detections is not None:
             self._get_roi_coordinates(face_detections)
