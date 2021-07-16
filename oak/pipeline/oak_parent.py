@@ -13,7 +13,7 @@ from oak.utils.params import LIST_LABELS
 
 class OAKParent(dai.Pipeline):
     # Breath roi corners
-    breath_roi_corners: tuple[float] = (0.4, 0.4, 0.42, 0.42)
+    breath_roi_corners: tuple[float] = (0.5, 0.4, 0.52, 0.42)
 
     input_name: str = "input"
     stress_input_name: str = "stress_input"
@@ -243,9 +243,9 @@ class OAKParent(dai.Pipeline):
         # depth.setConfidenceThreshold(200)
         # Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
         depth.setMedianFilter(dai.StereoDepthProperties.MedianFilter.KERNEL_5x5)
-        depth.setLeftRightCheck(False)
+        depth.setLeftRightCheck(True)
         depth.setExtendedDisparity(False)
-        depth.setSubpixel(False)
+        depth.setSubpixel(True)
         depth.setInputResolution(1280, 720)
 
         # Link input to calculate depth
@@ -341,12 +341,7 @@ class OAKParent(dai.Pipeline):
                     2,
                 )
 
-            if breath_roi is not None:
-                roi_bbox = frame_norm(frame, breath_roi)
-            else:
-                roi_bbox = frame_norm(frame, self.breath_roi_corners)
-
-            # print(self.breath_roi_corners, roi_bbox)
+            roi_bbox = frame_norm(frame, self.breath_roi_corners)
 
             show_frame = cv2.rectangle(
                 show_frame,
