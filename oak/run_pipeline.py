@@ -26,7 +26,7 @@ def main(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
-    video_path: str = "videos_3_cams/22",
+    video_path: str = None,  # "videos_3_cams/22",
     frequency: float = 5,
     plot_results: bool = True,
     post_server: bool = False,
@@ -58,13 +58,10 @@ def main(
 
     act = Activity()
     stre = Stress()
-    plot_list = [stre, act]
-    if video_path is None:
-        breath = Breath(BreathConfig())
-        plot_list.append(breath)
+    breath = Breath(BreathConfig())
 
     if plot_results:
-        plot_series = PlotSeries(plot_list)
+        plot_series = PlotSeries([stre, act, breath])
 
     if video_path is None:
         processor = OAKCam(body_path_model, face_path_model, stress_path_model)
@@ -74,8 +71,20 @@ def main(
         processor_parameters = {"video_path": video_path, "show_results": plot_results}
 
     start_time = time()
+    generator = processor.get(**processor_parameters)
 
-    for i, result in enumerate(processor.get(**processor_parameters)):
+    while True:
+        roi_points = breath.get_breath_config().get_roi_points()
+        next(generator)
+        result = generator.send(
+            [
+                roi_points[0]["x"],
+                roi_points[0]["y"],
+                roi_points[1]["x"],
+                roi_points[1]["y"],
+            ]
+        )
+
         # Process activity
         if result.body_detection is not None and result.face_detection is not None:
             act.update(result.body_detection, result.face_detection)
@@ -85,14 +94,10 @@ def main(
             stre.update(result.stress[0] == "stress")
 
         # Process breath
-        if video_path is None:
+        if result.body_detection is not None and result.depth is not None:
             breath.update(
                 result.face_detection, result.depth, result.calculator_results
             )
-            processor_parameters["new_config"] = [
-                breath.get_breath_config().topLeft,
-                breath.get_breath_config().bottomRight,
-            ]
 
         if time() - start_time >= frequency:
             if plot_results:

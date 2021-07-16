@@ -346,6 +346,8 @@ class OAKParent(dai.Pipeline):
             else:
                 roi_bbox = frame_norm(frame, self.breath_roi_corners)
 
+            # print(self.breath_roi_corners, roi_bbox)
+
             show_frame = cv2.rectangle(
                 show_frame,
                 (roi_bbox[0], roi_bbox[1]),

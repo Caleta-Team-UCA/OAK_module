@@ -119,7 +119,6 @@ class OAKCam(OAKParent):
     def get(
         self,
         show_results: bool = False,
-        new_config: Optional[Iterable[dai.Point2f]] = None,
     ) -> namedtuple:
         """Get all the results that output the entire Pipeline.
         This function works as a generator, so it can be called several times.
@@ -172,7 +171,9 @@ class OAKCam(OAKParent):
         )
 
         while True:
+            new_config = yield
             if new_config is not None:
+                self.breath_roi_corners = new_config
                 config = dai.SpatialLocationCalculatorConfigData()
                 top_left = dai.Point2f(new_config[0], new_config[1])
                 bottom_right = dai.Point2f(new_config[2], new_config[3])

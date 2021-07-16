@@ -168,6 +168,7 @@ class OAKVideo(OAKParent):
             right_in_q.send(img)
 
             if new_config is not None:
+                self.breath_roi_corners = new_config
                 config = dai.SpatialLocationCalculatorConfigData()
                 top_left = dai.Point2f(new_config[0], new_config[1])
                 bottom_right = dai.Point2f(new_config[2], new_config[3])
