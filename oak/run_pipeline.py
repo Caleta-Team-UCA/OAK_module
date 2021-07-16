@@ -5,7 +5,7 @@ import typer
 
 from oak.utils.results import PlotSeries
 from oak.pipeline.oak_cam import OAKCam
-from oak.pipeline.oak_video_v2 import OAKVideo
+from oak.pipeline.oak_video import OAKVideo
 from oak.process.activity import Activity
 from oak.process.stress import Stress
 from oak.process.breath import Breath, BreathConfig
