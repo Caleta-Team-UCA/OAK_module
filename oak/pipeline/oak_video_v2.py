@@ -21,9 +21,6 @@ class OAKVideo(OAKParent):
     width: int = 300
     height: int = 300
 
-    # Breath roi corners
-    breath_roi_corners: tuple[float] = (0.4, 0.4, 0.42, 0.42)
-
     # Steram names
     color_cam_name: str = "color_in"
     left_cam_name: str = "left_in"
@@ -84,196 +81,6 @@ class OAKVideo(OAKParent):
             Neural Network
         """
         self.color_cam.out.link(nn.input)
-
-    def _create_depth_and_calculator(
-        self, depth_name: str, calculator_name: str, calculator_config_name: str
-    ):
-        # DEPTH NODE
-        depth = self.createStereoDepth()
-        depth.setOutputDepth(True)
-
-        # depth.setConfidenceThreshold(200)
-        # Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
-        depth.setMedianFilter(dai.StereoDepthProperties.MedianFilter.KERNEL_5x5)
-        depth.setLeftRightCheck(False)
-        depth.setExtendedDisparity(False)
-        depth.setSubpixel(False)
-        depth.setInputResolution(1280, 720)
-
-        # Link input to calculate depth
-        self.mono_left_cam.out.link(depth.left)
-        self.mono_right_cam.out.link(depth.right)
-
-        # Link output
-        depth_out = self.createXLinkOut()
-        depth_out.setStreamName(depth_name)
-
-        depth.depth.link(depth_out.input)
-
-        # CALCULATOR
-        calculator = self.createSpatialLocationCalculator()
-        calculator.setWaitForConfigInput(False)
-        # We need to be accurate, so we use a very small ROI
-        top_left = dai.Point2f(self.breath_roi_corners[0], self.breath_roi_corners[1])
-        bottom_right = dai.Point2f(
-            self.breath_roi_corners[2], self.breath_roi_corners[3]
-        )
-
-        calculator.setWaitForConfigInput(False)
-        config = dai.SpatialLocationCalculatorConfigData()
-
-        # We measure depth in a very small range
-        config.depthThresholds.lowerThreshold = 600
-        config.depthThresholds.upperThreshold = 900
-
-        config.roi = dai.Rect(top_left, bottom_right)
-        calculator.initialConfig.addROI(config)
-
-        # Link Inputs
-        depth.depth.link(calculator.inputDepth)
-
-        calc_config = self.createXLinkIn()
-        calc_config.setStreamName(calculator_config_name)
-        calc_config.out.link(calculator.inputConfig)
-
-        # Link Output
-        calc_out = self.createXLinkOut()
-        calc_out.setStreamName(calculator_name)
-        calculator.out.link(calc_out.input)
-
-    def _get_cam_preview(self, cam_out_q: dai.DataOutputQueue) -> np.array:
-        """Returns the image from the ouptut camera node,
-        resized to custom size
-
-        Parameters
-        ----------
-        cam_out_q : dai.DataOutputQueue
-            Camera output node
-
-        Returns
-        -------
-        np.array
-            Image in custom size
-        """
-        frame = (
-            np.array(cam_out_q.get().getCvFrame())
-            .reshape((3, self.height, self.width))
-            .transpose(1, 2, 0)
-            .astype(np.uint8)
-        )
-
-        return frame
-
-    @staticmethod
-    def _get_depth(depth_out_q: dai.DataOutputQueue) -> np.array:
-        """Returns the depth image from the output depth node
-
-        Parameters
-        ----------
-        depth_out_q : dai.DataOutputQueue
-            Depth output node
-
-        Returns
-        -------
-        np.array
-            Depth image
-        """
-        depth_frame = depth_out_q.get().getFrame()
-
-        depth_frame = cv2.normalize(
-            depth_frame, None, 255, 0, cv2.NORM_INF, cv2.CV_8UC1
-        )
-        depth_frame = cv2.equalizeHist(depth_frame)
-        depth_frame = cv2.applyColorMap(depth_frame, cv2.COLORMAP_HOT)
-
-        return depth_frame
-
-    @staticmethod
-    def _get_calculator(calculator_out_q: dai.DataOutputQueue):
-        results = calculator_out_q.tryGet()
-
-        if results is not None:
-            results = results.getSpatialLocations()
-
-        return results
-
-    def _show_results(
-        self, frame, depth_frame, body_bbox, face_bbox, stress, breath_roi
-    ):
-        show_frame = frame.copy()
-
-        if body_bbox is not None:
-            show_frame = cv2.rectangle(
-                show_frame,
-                (body_bbox[0], body_bbox[1]),
-                (body_bbox[2], body_bbox[3]),
-                (255, 0, 0),
-                2,
-            )
-
-            show_frame = cv2.putText(
-                show_frame,
-                f"body",
-                (body_bbox[0], body_bbox[1] - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.9,
-                (255, 0, 0),
-                2,
-            )
-
-        if face_bbox is not None:
-            verde = (36, 255, 12)
-            rojo = (36, 12, 255)
-
-            if stress is not None and stress[0] == "stress":
-                color = rojo
-            else:
-                color = verde
-
-            show_frame = cv2.rectangle(
-                show_frame,
-                (face_bbox[0], face_bbox[1]),
-                (face_bbox[2], face_bbox[3]),
-                color,
-                2,
-            )
-
-            if stress is not None:
-                show_frame = cv2.putText(
-                    show_frame,
-                    f"{stress[0]}",
-                    (face_bbox[0], face_bbox[1] - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.9,
-                    color,
-                    2,
-                )
-
-            if breath_roi is not None:
-                roi_bbox = frame_norm(frame, breath_roi)
-            else:
-                roi_bbox = frame_norm(frame, self.breath_roi_corners)
-
-            show_frame = cv2.rectangle(
-                show_frame,
-                (roi_bbox[0], roi_bbox[1]),
-                (roi_bbox[2], roi_bbox[3]),
-                (0, 166, 255),
-                2,
-            )
-
-            show_frame = cv2.putText(
-                show_frame,
-                f"breath",
-                (roi_bbox[0], roi_bbox[1] - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.9,
-                (0, 166, 255),
-                2,
-            )
-
-        cv2.imshow("rgb", show_frame)
-        # cv2.imshow("depth", depth_frame)
 
     def get(
         self,
@@ -350,15 +157,6 @@ class OAKVideo(OAKParent):
             if not (read_correctly_1 and read_correctly_2 and read_correctly_3):
                 break
 
-            if new_config is not None:
-                config = dai.SpatialLocationCalculatorConfigData()
-                top_left = dai.Point2f(new_config[0], new_config[1])
-                bottom_right = dai.Point2f(new_config[2], new_config[3])
-                config.roi = dai.Rect(top_left, bottom_right)
-                cfg = dai.SpatialLocationCalculatorConfig()
-                cfg.addROI(config)
-                calculator_config_q.send(cfg)
-
             # Send images to pipeline
             img = process_frame(color_frame, self.width, self.height)
             color_in_q.send(img)
@@ -368,6 +166,15 @@ class OAKVideo(OAKParent):
 
             img = process_frame(right_frame, 1280, 720)
             right_in_q.send(img)
+
+            if new_config is not None:
+                config = dai.SpatialLocationCalculatorConfigData()
+                top_left = dai.Point2f(new_config[0], new_config[1])
+                bottom_right = dai.Point2f(new_config[2], new_config[3])
+                config.roi = dai.Rect(top_left, bottom_right)
+                cfg = dai.SpatialLocationCalculatorConfig()
+                cfg.addROI(config)
+                calculator_config_q.send(cfg)
 
             frame = color_frame
             depth_frame = self._get_depth(depth_out_q)
