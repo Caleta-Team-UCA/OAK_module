@@ -24,6 +24,8 @@ class OAKParent(dai.Pipeline):
 
     stress_bool: bool = False
 
+    depth_resolution:Optional[tuple[int]] = None
+
     def __init__(
         self,
         path_model_body: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
@@ -246,7 +248,8 @@ class OAKParent(dai.Pipeline):
         depth.setLeftRightCheck(True)
         depth.setExtendedDisparity(False)
         depth.setSubpixel(True)
-        depth.setInputResolution(1280, 720)
+        if self.depth_resolution is not None:
+            depth.setInputResolution(self.depth_resolution[0],self.depth_resolution[1])
 
         # Link input to calculate depth
         self.mono_left_cam.out.link(depth.left)

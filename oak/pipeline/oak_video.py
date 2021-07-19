@@ -31,6 +31,8 @@ class OAKVideo(OAKParent):
 
     calculator_config_name: str = "calculator_config"
 
+    depth_resolution:Optional[tuple[int]] = (1280, 720)
+
     def __init__(
         self,
         path_model_body: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
