@@ -15,6 +15,7 @@ PipelineOut = namedtuple(
     "display face_detection body_detection stress depth calculator_results roi_breath",
 )
 
+
 class OAKParent(dai.Pipeline):
     # Breath roi corners
     breath_roi_corners: tuple[float] = (0.5, 0.3, 0.52, 0.32)
@@ -28,7 +29,7 @@ class OAKParent(dai.Pipeline):
 
     stress_bool: bool = False
 
-    depth_resolution:Optional[tuple[int]] = None
+    depth_resolution: Optional[tuple[int]] = (640, 400)
 
     def __init__(
         self,
@@ -253,7 +254,7 @@ class OAKParent(dai.Pipeline):
         depth.setExtendedDisparity(False)
         depth.setSubpixel(False)
         if self.depth_resolution is not None:
-            depth.setInputResolution(self.depth_resolution[0],self.depth_resolution[1])
+            depth.setInputResolution(self.depth_resolution[0], self.depth_resolution[1])
 
         # Link input to calculate depth
         self.mono_left_cam.out.link(depth.left)
@@ -297,11 +298,18 @@ class OAKParent(dai.Pipeline):
         calculator.out.link(calc_out.input)
 
     def _show_results(
-        self, frame, depth_frame, body_bbox, face_bbox, stress, breath_roi
+        self, frame, depth_frame, body_bbox_raw, face_bbox_raw, stress, breath_roi_raw
     ):
-        show_frame = frame.copy()
+        dif = frame.shape[1] - frame.shape[0]
+        print(int(dif / 2), int(dif / 2) + frame.shape[0])
+        show_frame = frame.copy()[:, int(dif / 2) : int(dif / 2) + frame.shape[1], :]
 
-        if body_bbox is not None:
+        print(frame.shape, show_frame.shape)
+
+        if body_bbox_raw is not None:
+            body_bbox = frame_norm(
+                show_frame.shape[0], show_frame.shape[1], body_bbox_raw
+            )
             show_frame = cv2.rectangle(
                 show_frame,
                 (body_bbox[0], body_bbox[1]),
@@ -320,7 +328,10 @@ class OAKParent(dai.Pipeline):
                 2,
             )
 
-        if face_bbox is not None:
+        if face_bbox_raw is not None:
+            face_bbox = frame_norm(
+                show_frame.shape[0], show_frame.shape[1], face_bbox_raw
+            )
             verde = (36, 255, 12)
             rojo = (36, 12, 255)
 
@@ -348,7 +359,9 @@ class OAKParent(dai.Pipeline):
                     2,
                 )
 
-            roi_bbox = frame_norm(frame, self.breath_roi_corners)
+            roi_bbox = frame_norm(
+                show_frame.shape[0], show_frame.shape[1], breath_roi_raw
+            )
 
             show_frame = cv2.rectangle(
                 show_frame,
@@ -371,38 +384,44 @@ class OAKParent(dai.Pipeline):
         cv2.imshow("rgb", show_frame)
         cv2.imshow("depth", depth_frame)
 
-
     def get_process_streams(
-        self, 
-        frame, 
+        self,
+        frame,
         depth_frame,
-        face_out_q, 
-        stress_in_q, 
+        face_out_q,
+        stress_in_q,
         stress_out_q,
         body_out_q,
         calculator_config_q,
-        calculator_out_q
+        calculator_out_q,
+        roi_breath_raw,
     ) -> namedtuple:
         self.rgb_resolution = frame.shape
 
-        if self.breath_roi_corners  is not None:
+        if roi_breath_raw is not None:
+            self.breath_roi_corners = frame_norm(
+                self.depth_resolution[0], self.depth_resolution[1], roi_breath_raw
+            )
+            print("hola", self.depth_resolution, self.breath_roi_corners)
             config = dai.SpatialLocationCalculatorConfigData()
-            top_left = dai.Point2f(self.breath_roi_corners [0], self.breath_roi_corners [1])
-            bottom_right = dai.Point2f(self.breath_roi_corners [2], self.breath_roi_corners [3])
+            top_left = dai.Point2f(
+                self.breath_roi_corners[1], self.breath_roi_corners[0]
+            )
+            bottom_right = dai.Point2f(
+                self.breath_roi_corners[3], self.breath_roi_corners[2]
+            )
             config.roi = dai.Rect(top_left, bottom_right)
             cfg = dai.SpatialLocationCalculatorConfig()
             cfg.addROI(config)
             calculator_config_q.send(cfg)
 
-        face_bbox = self._get_face(face_out_q)
-        if face_bbox is not None:
-            face_bbox = frame_norm(frame, face_bbox)
+        face_bbox_raw = self._get_face(face_out_q)
+        if face_bbox_raw is not None:
+            face_bbox = frame_norm(frame.shape[0], frame.shape[1], face_bbox_raw)
 
-        body_bbox = self._get_body(body_out_q)
-        if body_bbox is not None:
-            body_bbox = frame_norm(frame, body_bbox)
+        body_bbox_raw = self._get_body(body_out_q)
 
-        if face_bbox is not None and self.stress_bool:
+        if face_bbox_raw is not None and self.stress_bool:
             face = frame[
                 face_bbox[1] : face_bbox[3],
                 face_bbox[0] : face_bbox[2],
@@ -415,14 +434,15 @@ class OAKParent(dai.Pipeline):
         calculator_results = self._get_calculator(calculator_out_q)
 
         return PipelineOut(
-                display=frame,
-                face_detection=face_bbox,
-                body_detection=body_bbox,
-                stress=stress,
-                depth=depth_frame,
-                calculator_results=calculator_results,
-                roi_breath = self.breath_roi_corners
-            )
+            display=frame,
+            face_detection=face_bbox_raw,
+            body_detection=body_bbox_raw,
+            stress=stress,
+            depth=depth_frame,
+            calculator_results=calculator_results,
+            roi_breath=roi_breath_raw,
+        )
+
     # ========= PUBLIC =========
 
     @abstractmethod

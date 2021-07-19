@@ -10,6 +10,7 @@ import typer
 from oak.pipeline.oak_parent import OAKParent
 from oak.utils.opencv import frame_norm
 
+
 class OAKCam(OAKParent):
     width: int = 300
     height: int = 300
@@ -63,7 +64,7 @@ class OAKCam(OAKParent):
         # Define output stream
         cam_xout = self.createXLinkOut()
         cam_xout.setStreamName(self.cam_preview_name)
-        self.color_cam.preview.link(cam_xout.input)
+        self.color_cam.video.link(cam_xout.input)
 
         # Right and Left Cameras
         self.mono_left_cam = self.createMonoCamera()
@@ -101,12 +102,7 @@ class OAKCam(OAKParent):
         np.array
             Image in custom size
         """
-        frame = (
-            np.array(cam_out_q.get().getData())
-            .reshape((3, self.height, self.width))
-            .transpose(1, 2, 0)
-            .astype(np.uint8)
-        )
+        frame = cam_out_q.get().getCvFrame()
 
         return frame
 
@@ -165,30 +161,31 @@ class OAKCam(OAKParent):
         )
 
         while True:
-            self.breath_roi_corners = yield
+            roi_breath_raw = yield
 
             frame = self._get_cam_preview(cam_out_q)
             depth_frame = self._get_depth(depth_out_q)
 
             pipeline_result = self.get_process_streams(
-                frame, 
-                depth_frame, 
+                frame,
+                depth_frame,
                 face_out_q,
                 stress_in_q,
                 stress_out_q,
                 body_out_q,
                 calculator_config_q,
-                calculator_out_q
+                calculator_out_q,
+                roi_breath_raw,
             )
             # Code for showing results in CV2
             if show_results:
                 self._show_results(
-                    frame, 
-                    depth_frame, 
-                    pipeline_result.body_detection, 
-                    pipeline_result.face_detection, 
-                    pipeline_result.stress, 
-                    pipeline_result.roi_breath
+                    frame,
+                    depth_frame,
+                    pipeline_result.body_detection,
+                    pipeline_result.face_detection,
+                    pipeline_result.stress,
+                    pipeline_result.roi_breath,
                 )
 
                 if cv2.waitKey(1) == ord("q"):
