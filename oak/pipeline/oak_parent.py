@@ -1,13 +1,11 @@
 from abc import abstractmethod
 from collections import namedtuple
-from typing import Optional, Tuple, Union, List, Any
+from typing import Any, List, Optional, Tuple, Union
 
+import cv2
 import depthai as dai
 import numpy as np
-import cv2
-
-from oak.utils.opencv import frame_norm
-from oak.utils.opencv import to_planar
+from oak.utils.opencv import frame_norm, to_planar
 from oak.utils.params import LIST_LABELS
 
 PipelineOut = namedtuple(

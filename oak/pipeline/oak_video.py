@@ -1,15 +1,11 @@
 from collections import namedtuple
-from time import sleep
 from typing import Iterable, Optional
-from oak.utils.opencv import process_frame
 
 import cv2
 import depthai as dai
-import numpy as np
 import typer
-
 from oak.pipeline.oak_parent import OAKParent
-from oak.utils.opencv import frame_norm
+from oak.utils.opencv import process_frame
 
 
 class OAKVideo(OAKParent):
@@ -26,7 +22,7 @@ class OAKVideo(OAKParent):
 
     calculator_config_name: str = "calculator_config"
 
-    depth_resolution:Optional[tuple[int]] = (640, 480)
+    depth_resolution: Optional[tuple[int]] = (640, 480)
 
     def __init__(
         self,
@@ -162,35 +158,39 @@ class OAKVideo(OAKParent):
             img = process_frame(color_frame, self.width, self.height)
             color_in_q.send(img)
 
-            img = process_frame(left_frame, self.depth_resolution[0], self.depth_resolution[1])
+            img = process_frame(
+                left_frame, self.depth_resolution[0], self.depth_resolution[1]
+            )
             left_in_q.send(img)
 
-            img = process_frame(right_frame, self.depth_resolution[0], self.depth_resolution[1])
+            img = process_frame(
+                right_frame, self.depth_resolution[0], self.depth_resolution[1]
+            )
             right_in_q.send(img)
 
             frame = color_frame
             depth_frame = self._get_depth(depth_out_q)
 
             pipeline_result = self.get_process_streams(
-                frame, 
-                depth_frame, 
+                frame,
+                depth_frame,
                 face_out_q,
                 stress_in_q,
                 stress_out_q,
                 body_out_q,
                 calculator_config_q,
-                calculator_out_q
+                calculator_out_q,
             )
 
             # Code for showing results in CV2
             if show_results:
                 self._show_results(
-                    frame, 
-                    depth_frame, 
-                    pipeline_result.body_detection, 
-                    pipeline_result.face_detection, 
-                    pipeline_result.stress, 
-                    pipeline_result.roi_breath
+                    frame,
+                    depth_frame,
+                    pipeline_result.body_detection,
+                    pipeline_result.face_detection,
+                    pipeline_result.stress,
+                    pipeline_result.roi_breath,
                 )
 
                 if cv2.waitKey(1) == ord("q"):

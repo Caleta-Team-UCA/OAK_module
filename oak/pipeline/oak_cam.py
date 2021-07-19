@@ -1,14 +1,13 @@
 from collections import namedtuple
 from time import sleep
-from typing import Iterable, Optional
+from typing import Optional
 
 import cv2
 import depthai as dai
 import numpy as np
 import typer
-
 from oak.pipeline.oak_parent import OAKParent
-from oak.utils.opencv import frame_norm
+
 
 class OAKCam(OAKParent):
     width: int = 300
@@ -171,24 +170,24 @@ class OAKCam(OAKParent):
             depth_frame = self._get_depth(depth_out_q)
 
             pipeline_result = self.get_process_streams(
-                frame, 
-                depth_frame, 
+                frame,
+                depth_frame,
                 face_out_q,
                 stress_in_q,
                 stress_out_q,
                 body_out_q,
                 calculator_config_q,
-                calculator_out_q
+                calculator_out_q,
             )
             # Code for showing results in CV2
             if show_results:
                 self._show_results(
-                    frame, 
-                    depth_frame, 
-                    pipeline_result.body_detection, 
-                    pipeline_result.face_detection, 
-                    pipeline_result.stress, 
-                    pipeline_result.roi_breath
+                    frame,
+                    depth_frame,
+                    pipeline_result.body_detection,
+                    pipeline_result.face_detection,
+                    pipeline_result.stress,
+                    pipeline_result.roi_breath,
                 )
 
                 if cv2.waitKey(1) == ord("q"):
