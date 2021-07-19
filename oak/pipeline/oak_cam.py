@@ -171,12 +171,12 @@ class OAKCam(OAKParent):
         )
 
         while True:
-            new_config = yield
-            if new_config is not None:
-                self.breath_roi_corners = new_config
+            roi_breath = yield
+            if roi_breath is not None:
+                self.breath_roi_corners = roi_breath
                 config = dai.SpatialLocationCalculatorConfigData()
-                top_left = dai.Point2f(new_config[0], new_config[1])
-                bottom_right = dai.Point2f(new_config[2], new_config[3])
+                top_left = dai.Point2f(roi_breath[0], roi_breath[1])
+                bottom_right = dai.Point2f(roi_breath[2], roi_breath[3])
                 config.roi = dai.Rect(top_left, bottom_right)
                 cfg = dai.SpatialLocationCalculatorConfig()
                 cfg.addROI(config)
@@ -208,7 +208,7 @@ class OAKCam(OAKParent):
             # Code for showing results in CV2
             if show_results:
                 self._show_results(
-                    frame, depth_frame, body_bbox, face_bbox, stress, new_config
+                    frame, depth_frame, body_bbox, face_bbox, stress, roi_breath
                 )
 
                 if cv2.waitKey(1) == ord("q"):

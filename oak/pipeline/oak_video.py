@@ -86,7 +86,7 @@ class OAKVideo(OAKParent):
         self,
         video_path: str,
         show_results: bool = False,
-        new_config: Optional[Iterable[float]] = None,
+        roi_breath: Optional[Iterable[float]] = None,
     ) -> namedtuple:
         """Get all the results that output the entire Pipeline.
         This function works as a generator, so it can be called several times.
@@ -167,11 +167,11 @@ class OAKVideo(OAKParent):
             img = process_frame(right_frame, 1280, 720)
             right_in_q.send(img)
 
-            if new_config is not None:
-                self.breath_roi_corners = new_config
+            if roi_breath is not None:
+                self.breath_roi_corners = roi_breath
                 config = dai.SpatialLocationCalculatorConfigData()
-                top_left = dai.Point2f(new_config[0], new_config[1])
-                bottom_right = dai.Point2f(new_config[2], new_config[3])
+                top_left = dai.Point2f(roi_breath[0], roi_breath[1])
+                bottom_right = dai.Point2f(roi_breath[2], roi_breath[3])
                 config.roi = dai.Rect(top_left, bottom_right)
                 cfg = dai.SpatialLocationCalculatorConfig()
                 cfg.addROI(config)
@@ -203,7 +203,7 @@ class OAKVideo(OAKParent):
             # Code for showing results in CV2
             if show_results:
                 self._show_results(
-                    frame, depth_frame, body_bbox, face_bbox, stress, new_config
+                    frame, depth_frame, body_bbox, face_bbox, stress, roi_breath
                 )
 
                 if cv2.waitKey(1) == ord("q"):
