@@ -15,6 +15,7 @@ PipelineOut = namedtuple(
     "display face_detection body_detection stress depth calculator_results roi_breath",
 )
 
+
 class OAKParent(dai.Pipeline):
     # Breath roi corners
     breath_roi_corners: tuple[float] = (0.5, 0.3, 0.52, 0.32)
@@ -28,7 +29,7 @@ class OAKParent(dai.Pipeline):
 
     stress_bool: bool = False
 
-    depth_resolution:Optional[tuple[int]] = None
+    depth_resolution: Optional[tuple[int]] = None
 
     def __init__(
         self,
@@ -253,7 +254,7 @@ class OAKParent(dai.Pipeline):
         depth.setExtendedDisparity(False)
         depth.setSubpixel(False)
         if self.depth_resolution is not None:
-            depth.setInputResolution(self.depth_resolution[0],self.depth_resolution[1])
+            depth.setInputResolution(self.depth_resolution[0], self.depth_resolution[1])
 
         # Link input to calculate depth
         self.mono_left_cam.out.link(depth.left)
@@ -320,11 +321,11 @@ class OAKParent(dai.Pipeline):
                 2,
             )
 
-        if face_bbox is not None:
+        if face_bbox is not None and stress is not None:
             verde = (36, 255, 12)
             rojo = (36, 12, 255)
 
-            if stress is not None and stress[0] == "stress":
+            if stress[0] == "stress":
                 color = rojo
             else:
                 color = verde
@@ -336,17 +337,15 @@ class OAKParent(dai.Pipeline):
                 color,
                 2,
             )
-
-            if stress is not None:
-                show_frame = cv2.putText(
-                    show_frame,
-                    f"{stress[0]}",
-                    (face_bbox[0], face_bbox[1] - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.9,
-                    color,
-                    2,
-                )
+            show_frame = cv2.putText(
+                show_frame,
+                f"{stress[0]}",
+                (face_bbox[0], face_bbox[1] - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.9,
+                color,
+                2,
+            )
 
             roi_bbox = frame_norm(frame, self.breath_roi_corners)
 
@@ -371,24 +370,27 @@ class OAKParent(dai.Pipeline):
         cv2.imshow("rgb", show_frame)
         cv2.imshow("depth", depth_frame)
 
-
     def get_process_streams(
-        self, 
-        frame, 
+        self,
+        frame,
         depth_frame,
-        face_out_q, 
-        stress_in_q, 
+        face_out_q,
+        stress_in_q,
         stress_out_q,
         body_out_q,
         calculator_config_q,
-        calculator_out_q
+        calculator_out_q,
     ) -> namedtuple:
         self.rgb_resolution = frame.shape
 
-        if self.breath_roi_corners  is not None:
+        if self.breath_roi_corners is not None:
             config = dai.SpatialLocationCalculatorConfigData()
-            top_left = dai.Point2f(self.breath_roi_corners [0], self.breath_roi_corners [1])
-            bottom_right = dai.Point2f(self.breath_roi_corners [2], self.breath_roi_corners [3])
+            top_left = dai.Point2f(
+                self.breath_roi_corners[0], self.breath_roi_corners[1]
+            )
+            bottom_right = dai.Point2f(
+                self.breath_roi_corners[2], self.breath_roi_corners[3]
+            )
             config.roi = dai.Rect(top_left, bottom_right)
             cfg = dai.SpatialLocationCalculatorConfig()
             cfg.addROI(config)
@@ -415,14 +417,15 @@ class OAKParent(dai.Pipeline):
         calculator_results = self._get_calculator(calculator_out_q)
 
         return PipelineOut(
-                display=frame,
-                face_detection=face_bbox,
-                body_detection=body_bbox,
-                stress=stress,
-                depth=depth_frame,
-                calculator_results=calculator_results,
-                roi_breath = self.breath_roi_corners
-            )
+            display=frame,
+            face_detection=face_bbox,
+            body_detection=body_bbox,
+            stress=stress,
+            depth=depth_frame,
+            calculator_results=calculator_results,
+            roi_breath=self.breath_roi_corners,
+        )
+
     # ========= PUBLIC =========
 
     @abstractmethod
