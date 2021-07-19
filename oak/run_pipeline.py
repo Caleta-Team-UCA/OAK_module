@@ -1,4 +1,4 @@
-from time import sleep, time
+from time import time
 from requests import post
 
 import typer
@@ -26,7 +26,7 @@ def main(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
-    video_path: str = None,#"videos_3_cams/21",
+    video_path: str = None,  # "videos_3_cams/21",
     frequency: float = 5,
     plot_results: bool = True,
     post_server: bool = False,
@@ -88,7 +88,9 @@ def main(
         # Process breath
         if result.body_detection is not None:
             breath.update(
-                result.face_detection, processor.rgb_resolution, result.calculator_results
+                result.face_detection,
+                processor.rgb_resolution,
+                result.calculator_results,
             )
 
         if time() - start_time >= frequency:
