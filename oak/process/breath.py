@@ -1,107 +1,102 @@
-import depthai as dai
-import numpy as np
-import pandas as pd
-
 from typing import Iterable, List
+
+import pandas as pd
 from oak.process.process_base import ProcessBase
-
-
-class BreathConfig():
-    # Width and height
-    height = 480
-    width = 640
-
-    # We need to be accurate, so we use a very small ROI
-    topLeft = dai.Point2f(0.4, 0.4)
-    bottomRight = dai.Point2f(0.42, 0.42)
-
-    # Size of the ROI
-    width_roi = 20
-
-    # Position dx and dy of the ROI
-    dy = 0.9
-    dx = 1.5
-
-    xmin, ymin, xmax, ymax = 0, 0, 0, 0
-
-    def get_roi_points(self):
-        return self.topLeft, self.bottomRight
-
-    def get_roi_bbox(self):
-        return self.xmin, self.ymin, self.xmax, self.ymax
 
 
 class Breath(ProcessBase):
     name: str = "Breath"
 
-    def __init__(self, breath_config: BreathConfig):
-        self.breath_config = breath_config
+    # Width and height
+    height: int = 300
+    width: int = 300
 
-    def get_breath_config(self) -> BreathConfig:
-        return self.breath_config
+    # We need to be accurate, so we use a very small ROI
+    topLeft: dict[str, float] = {"x": 0.4, "y": 0.4}
+    bottomRight: dict[str, float] = {"x": 0.42, "y": 0.42}
 
-    def set_breath_config(self, breath_config: BreathConfig):
-        self.breath_config = breath_config
+    # Size of the ROI
+    width_roi: int = 20
+
+    # Position dx and dy of the ROI
+    dy: float = 0.4
+    dx: float = 1.5
+
+    xmin: int = 0
+    ymin: int = 0
+    xmax: int = 0
+    ymax: int = 0
 
     def restart_series(self):
         self.ser_score = self.ser_score.iloc[-int(len(self.ser_score) / 4) :]
 
-    def _get_roi_coordinates(
-        self,
-        face_detections: Iterable[int]
-    ):
+    def _get_roi_coordinates(self, face_detections: Iterable[int]):
+        x1, y1, x2, y2 = face_detections
         # ROI coordinates
         # width_roi is the size of the ROI, user-defined
         # dx and dy can be change interactively using the WASD keys
-        self.breath_config.xmin = int(face_detections[0] + self.breath_config.dx * (face_detections[2] - face_detections[0]) / 2) - int(self.breath_config.width_roi / 2)
-        self.breath_config.ymin = int(face_detections[3] + self.breath_config.dy * (face_detections[3] - face_detections[1]))
-        self.breath_config.xmax = self.breath_config.xmin + self.breath_config.width_roi
-        self.breath_config.ymax = self.breath_config.ymin + self.breath_config.width_roi
+        self.xmin = int(x1 + self.dx * (x2 - x1) / 2) - int(self.width_roi / 2)
+
+        self.ymin = int(y2 + self.dy * (y2 - y1))
+        self.xmax = self.xmin + self.width_roi
+        self.ymax = self.ymin + self.width_roi
 
         # Section needed to catch some errors when the ROI is outside the frame. In such situations the ROI is kept inside
-        if self.breath_config.xmin > 1:
-            self.breath_config.topLeft.x = self.breath_config.xmin / self.breath_config.width
+        if self.xmin > 1:
+            self.topLeft["x"] = self.xmin / self.width
         else:
-            self.breath_config.topLeft.x = 1 / self.breath_config.width
-            self.breath_config.bottomRight.x = self.breath_config.topLeft.x + self.breath_config.width_roi
+            self.topLeft["x"] = 1 / self.width
+            self.bottomRight["x"] = self.topLeft["x"] + self.width_roi
 
-        if self.breath_config.ymin > 1:
-            self.breath_config.topLeft.y = self.breath_config.ymin / self.breath_config.height
+        if self.ymin > 1:
+            self.topLeft["y"] = self.ymin / self.height
         else:
-            self.breath_config.topLeft.y = 1 / self.breath_config.height
-            self.breath_config.bottomRight.y = self.breath_config.topLeft.y + self.breath_config.width_roi
+            self.topLeft["y"] = 1 / self.height
+            self.bottomRight["y"] = self.topLeft["y"] + self.width_roi
 
-        if self.breath_config.xmax < self.breath_config.width:
-            self.breath_config.bottomRight.x = self.breath_config.xmax / self.breath_config.width
+        if self.xmax < self.width:
+            self.bottomRight["x"] = self.xmax / self.width
         else:
-            self.breath_config.bottomRight.x = self.breath_config.width / self.breath_config.width
-            self.breath_config.topLeft.x = self.breath_config.bottomRight.x - self.breath_config.width_roi
+            self.bottomRight["x"] = self.width / self.width
+            self.topLeft["x"] = self.bottomRight["x"] - self.width_roi
 
-        if self.breath_config.ymax < self.breath_config.height:
-            self.breath_config.bottomRight.y = self.breath_config.ymax / self.breath_config.height
+        if self.ymax < self.height:
+            self.bottomRight["y"] = self.ymax / self.height
         else:
-            self.breath_config.bottomRight.y = self.breath_config.height / self.breath_config.height
-            self.breath_config.topLeft.y = self.breath_config.bottomRight.y - self.breath_config.width_roi
+            self.bottomRight["y"] = self.height
+            self.topLeft["y"] = self.bottomRight["y"] - self.width_roi
 
-    def _get_depth_roi(
-        self,
-        calculator_results: List[int]
-    ) -> int:
+    def _get_depth_roi(self, calculator_results: List[int]) -> int:
         # Measure depth from stereo-matching between left-right cameras and adds the value to the variable z
-        return int(calculator_results[len(calculator_results) - 1].spatialCoordinates.z) / 10
+        return (
+            int(calculator_results[len(calculator_results) - 1].spatialCoordinates.z)
+            / 10
+        )
+
+    @property
+    def get_roi_corners(self) -> tuple[float]:
+        return (
+            self.topLeft["x"],
+            self.topLeft["y"],
+            self.bottomRight["x"],
+            self.bottomRight["y"],
+        )
 
     def update(
         self,
         face_detections: Iterable[int],
-        depth_frame: np.array,
-        calculator_results: List[int]
+        frame_shape: tuple[int],
+        calculator_results: List[int],
     ):
+        self.width = frame_shape[1]
+        self.height = frame_shape[0]
+
         if face_detections is not None:
             self._get_roi_coordinates(face_detections)
 
         if face_detections is not None and calculator_results is not None:
             distance = self._get_depth_roi(calculator_results)
-            print("Distance: " + str(distance))
+            # print("Distance: " + str(distance))
 
             self.ser_score = self.ser_score.append(
                 pd.Series([distance], index=[self.total_elements])
