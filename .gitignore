@@ -130,6 +130,7 @@ dmypy.json
 
 # Videos
 videos/
+videos_3_cams/
 
 # Pycharm
 .idea/

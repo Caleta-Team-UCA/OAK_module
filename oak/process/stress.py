@@ -5,11 +5,6 @@ from oak.process.process_base import ProcessBase
 class Stress(ProcessBase):
     name: str = "Stress"
 
-    def __init__(
-        self,
-    ):
-        self.ser_score = pd.Series(name="Stress score")
-
     def update(self, stress_score: int):
         """Updates the stress analysis with new information.
 
@@ -27,4 +22,5 @@ class Stress(ProcessBase):
         self.total_elements += 1
 
     def restart_series(self):
+        """Clean up the series and restart them with fewer values"""
         self.ser_score = self.ser_score.iloc[-int(len(self.ser_score) / 4) :]

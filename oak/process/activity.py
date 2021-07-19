@@ -28,6 +28,7 @@ class Activity(ProcessBase):
         self.ser_down = pd.Series(name="Down")
 
     def restart_series(self):
+        """Clean up the series and restart them with fewer values"""
         size = -int(len(self.ser_right) / 4)
         # Initialize series of box dimensions
         self.ser_right = self.ser_right.iloc[size:]

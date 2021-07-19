@@ -1,4 +1,5 @@
-from time import sleep, time
+from time import time
+from requests import post
 
 import typer
 
@@ -7,16 +8,28 @@ from oak.pipeline.oak_cam import OAKCam
 from oak.pipeline.oak_video import OAKVideo
 from oak.process.activity import Activity
 from oak.process.stress import Stress
-from oak.process.breath import Breath, BreathConfig
+from oak.process.breath import Breath
+
+# TODO: meter este diccionario en un config, para poder modificarlo más fácilmente
+server_url = "vai.uca.es/event"
+post_params = {
+    "name": "Juan",
+    "comments": "",
+    "anomaly": False,
+    "type": "",
+    "value": 0,
+    "babyid": 0,
+}
 
 
 def main(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
-    video_path: str = None,  # "videos/22-center-2.mp4",
-    frequency: int = 5,
+    video_path: str = None,  # "videos_3_cams/21",
+    frequency: float = 5,
     plot_results: bool = True,
+    post_server: bool = False,
 ):
     """Runs the OAK pipeline, streaming from a video file or from the camera, if
     no video file is provided. The pipeline shows on screen the video on real time,
@@ -35,21 +48,20 @@ def main(
         "models/stress_classifier_2021.2.blob"
     video_path : str, optional
         Path to the video file. If None provided, uses the cam. By default None
-    frequency : int, optional
-        Rate at which plots are updated, in seconds, by default 5
+    frequency : float, optional
+        Rate at which plots are updated and values are sent to the server, in seconds, by default 5
     plot_results : bool, optional
         Whether to plot results or not.
+    post_server : bool, optional
+        Wheter to send results to the server or not.
     """
 
     act = Activity()
     stre = Stress()
-    plot_list = [stre, act]
-    if video_path is None:
-        breath = Breath(BreathConfig())
-        plot_list.append(breath)
+    breath = Breath()
 
     if plot_results:
-        plot_series = PlotSeries(plot_list)
+        plot_series = PlotSeries([stre, act, breath])
 
     if video_path is None:
         processor = OAKCam(body_path_model, face_path_model, stress_path_model)
@@ -59,8 +71,12 @@ def main(
         processor_parameters = {"video_path": video_path, "show_results": plot_results}
 
     start_time = time()
+    generator = processor.get(**processor_parameters)
 
-    for i, result in enumerate(processor.get(**processor_parameters)):
+    while True:
+        next(generator)
+        result = generator.send(breath.get_roi_corners)
+
         # Process activity
         if result.body_detection is not None and result.face_detection is not None:
             act.update(result.body_detection, result.face_detection)
@@ -70,17 +86,23 @@ def main(
             stre.update(result.stress[0] == "stress")
 
         # Process breath
-        if video_path is None:
+        if result.body_detection is not None:
             breath.update(
-                result.face_detection, result.depth, result.calculator_results
+                result.face_detection,
+                processor.rgb_resolution,
+                result.calculator_results,
             )
-            processor_parameters["new_config"] = [
-                breath.get_breath_config().topLeft,
-                breath.get_breath_config().bottomRight,
-            ]
 
-        if plot_results and time() - start_time >= frequency:
-            plot_series.update("movavg")
+        if time() - start_time >= frequency:
+            if plot_results:
+                plot_series.update("movavg")
+
+            if post_server:
+                post_params["stress"] = stre.get_moving_average().tolist()
+                post_params["act"] = act.get_moving_average().tolist()
+                response = post(server_url, data=post_params)
+                print(response)
+
             act.restart_series()
             stre.restart_series()
             breath.restart_series()
@@ -88,7 +110,7 @@ def main(
 
         # Aquí simulamos que se estuviera haciendo
         # algún tipo de procesamiento con los datos
-        sleep(0.05)
+        # sleep(0.05)
 
 
 if __name__ == "__main__":

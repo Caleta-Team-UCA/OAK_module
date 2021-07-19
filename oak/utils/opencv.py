@@ -1,5 +1,6 @@
-import cv2
 from time import monotonic
+
+import cv2
 import depthai as dai
 import numpy as np
 
