@@ -1,5 +1,6 @@
 from abc import abstractmethod
 
+import numpy as np
 import pandas as pd
 
 
@@ -17,13 +18,17 @@ class ProcessBase:
         """Updates the analysis with new information."""
         pass
 
-    def get_moving_average(self):
+    def get_moving_average(self) -> np.array:
         """Get moving average of the scores"""
         return (
             self.ser_score.rolling(window=int(len(self.ser_score) / 6))
             .mean()
             .to_numpy()
         )
+
+    def get_dict_series(self) -> dict:
+        """Returns a dictionary of series to plot"""
+        return {"movavg": self.get_moving_average()}
 
     @property
     def score(self):
