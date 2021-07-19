@@ -1,4 +1,5 @@
 from abc import abstractmethod
+
 import pandas as pd
 
 
