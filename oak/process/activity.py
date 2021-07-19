@@ -90,7 +90,7 @@ class Activity(ProcessBase):
     def legs(self):
         return self.ser_down
 
-    def get_moving_average(self):
+    def get_dict_series(self) -> dict:
         return {
             "Right arm": self.arm_right,
             "Left arm": self.arm_left,
