@@ -1,64 +1,59 @@
-from typing import List
+from typing import Iterable
 
 import matplotlib.pyplot as plt
+from oak.process.process_base import ProcessBase
 
 COLORS = ["salmon", "cornflowerblue", "forestgreen"]
 
 
 class PlotSeries:
-    def __init__(self, list_ser: List):
+    def __init__(self, list_proc: Iterable[ProcessBase]):
         """Plots studies made on a figure, that can be updated on real time
 
         Parameters
         ----------
-        list_ser : list
+        list_proc : Iterable[ProcessBase]
             List of ProcessBase objects
         """
         self.fig = plt.figure()
 
-        self.ser_plot_data = {}
-        for i, ser in enumerate(list_ser):
-            c = COLORS[i]
-            ax = plt.subplot(int(f"{len(list_ser)}1{i + 1}"))
+        self.proc_plot_data = {}
+        for i, proc in enumerate(list_proc):
+            ax = plt.subplot(int(f"{len(list_proc)}1{i + 1}"))
             self.fig.canvas.draw()
 
-            self.ser_plot_data[ser.name] = {}
-            self.ser_plot_data[ser.name]["object"] = ser
-            self.ser_plot_data[ser.name]["color"] = c
-            self.ser_plot_data[ser.name]["ax"] = ax
+            self.proc_plot_data[proc.name] = {}
+            self.proc_plot_data[proc.name]["object"] = proc
+            # self.proc_plot_data[proc.name]["color"] = COLORS[i]
+            self.proc_plot_data[proc.name]["ax"] = ax
 
-            self._plot_ser(ser, ax)
+            self._plot_process(proc, ax)
 
             ax.grid()
             ax.set_xlabel("Time (frames)")
-            ax.set_ylabel(ser.name)
+            ax.set_ylabel(proc.name)
 
         plt.tight_layout()
         plt.show(block=False)
 
-    def _plot_ser(self, ser, ax):
-        moving_mean = ser.get_moving_average()
-        if type(moving_mean) == dict:
-            for i, (name, ser_sub) in enumerate(moving_mean.items()):
-                ax.plot(
-                    ser.score.index.to_numpy(),
-                    ser_sub,
-                    COLORS[i],
-                    label=name,
-                )
-            ax.legend(moving_mean.keys())
-        else:
+    def _plot_process(self, proc: ProcessBase, ax):
+        """Plots a process in given axis"""
+        dict_plot = proc.get_dict_series()
+        for i, (name, ser_sub) in enumerate(dict_plot.items()):
             ax.plot(
-                ser.score.index.to_numpy(),
-                moving_mean,
-                self.ser_plot_data[ser.name]["color"],
-                label=ser.name,
+                proc.score.index.to_numpy(),
+                ser_sub,
+                COLORS[i],
+                label=name,
             )
+        keys = dict_plot.keys()
+        if len(keys) > 1:
+            ax.legend(keys)
 
     def update(self, method: str = None):
         """Updates the figure"""
-        for name, ser_data in self.ser_plot_data.items():
-            self._plot_ser(ser_data["object"], ser_data["ax"])
+        for name, ser_data in self.proc_plot_data.items():
+            self._plot_process(ser_data["object"], ser_data["ax"])
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
