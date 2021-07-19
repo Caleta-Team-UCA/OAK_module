@@ -10,6 +10,10 @@ from oak.utils.opencv import frame_norm
 from oak.utils.opencv import to_planar
 from oak.utils.params import LIST_LABELS
 
+PipelineOut = namedtuple(
+    "PipelineOut",
+    "display face_detection body_detection stress depth calculator_results roi_breath",
+)
 
 class OAKParent(dai.Pipeline):
     # Breath roi corners
@@ -245,9 +249,9 @@ class OAKParent(dai.Pipeline):
         # depth.setConfidenceThreshold(200)
         # Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
         depth.setMedianFilter(dai.StereoDepthProperties.MedianFilter.KERNEL_5x5)
-        depth.setLeftRightCheck(True)
+        depth.setLeftRightCheck(False)
         depth.setExtendedDisparity(False)
-        depth.setSubpixel(True)
+        depth.setSubpixel(False)
         if self.depth_resolution is not None:
             depth.setInputResolution(self.depth_resolution[0],self.depth_resolution[1])
 
@@ -367,6 +371,58 @@ class OAKParent(dai.Pipeline):
         cv2.imshow("rgb", show_frame)
         cv2.imshow("depth", depth_frame)
 
+
+    def get_process_streams(
+        self, 
+        frame, 
+        depth_frame,
+        face_out_q, 
+        stress_in_q, 
+        stress_out_q,
+        body_out_q,
+        calculator_config_q,
+        calculator_out_q
+    ) -> namedtuple:
+        self.rgb_resolution = frame.shape
+
+        if self.breath_roi_corners  is not None:
+            config = dai.SpatialLocationCalculatorConfigData()
+            top_left = dai.Point2f(self.breath_roi_corners [0], self.breath_roi_corners [1])
+            bottom_right = dai.Point2f(self.breath_roi_corners [2], self.breath_roi_corners [3])
+            config.roi = dai.Rect(top_left, bottom_right)
+            cfg = dai.SpatialLocationCalculatorConfig()
+            cfg.addROI(config)
+            calculator_config_q.send(cfg)
+
+        face_bbox = self._get_face(face_out_q)
+        if face_bbox is not None:
+            face_bbox = frame_norm(frame, face_bbox)
+
+        body_bbox = self._get_body(body_out_q)
+        if body_bbox is not None:
+            body_bbox = frame_norm(frame, body_bbox)
+
+        if face_bbox is not None and self.stress_bool:
+            face = frame[
+                face_bbox[1] : face_bbox[3],
+                face_bbox[0] : face_bbox[2],
+                :,
+            ]
+            stress = self._get_stress(face, stress_in_q, stress_out_q)
+        else:
+            stress = None
+
+        calculator_results = self._get_calculator(calculator_out_q)
+
+        return PipelineOut(
+                display=frame,
+                face_detection=face_bbox,
+                body_detection=body_bbox,
+                stress=stress,
+                depth=depth_frame,
+                calculator_results=calculator_results,
+                roi_breath = self.breath_roi_corners
+            )
     # ========= PUBLIC =========
 
     @abstractmethod

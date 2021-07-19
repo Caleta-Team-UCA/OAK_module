@@ -10,12 +10,6 @@ import typer
 from oak.pipeline.oak_parent import OAKParent
 from oak.utils.opencv import frame_norm
 
-PipelineOut = namedtuple(
-    "PipelineOut",
-    "display face_detection body_detection stress depth calculator_results",
-)
-
-
 class OAKCam(OAKParent):
     width: int = 300
     height: int = 300
@@ -138,7 +132,7 @@ class OAKCam(OAKParent):
 
         # Input queue
         calculator_config_q = device.getInputQueue(
-            name=self.calculator_config_name, maxSize=4, blocking=False
+            name=self.calculator_config_name, maxSize=1, blocking=False
         )
 
         # Output queues
@@ -171,57 +165,36 @@ class OAKCam(OAKParent):
         )
 
         while True:
-            roi_breath = yield
-            if roi_breath is not None:
-                self.breath_roi_corners = roi_breath
-                config = dai.SpatialLocationCalculatorConfigData()
-                top_left = dai.Point2f(roi_breath[0], roi_breath[1])
-                bottom_right = dai.Point2f(roi_breath[2], roi_breath[3])
-                config.roi = dai.Rect(top_left, bottom_right)
-                cfg = dai.SpatialLocationCalculatorConfig()
-                cfg.addROI(config)
-                calculator_config_q.send(cfg)
+            self.breath_roi_corners = yield
 
             frame = self._get_cam_preview(cam_out_q)
             depth_frame = self._get_depth(depth_out_q)
 
-            face_bbox = self._get_face(face_out_q)
-            if face_bbox is not None:
-                face_bbox = frame_norm(frame, face_bbox)
-
-            body_bbox = self._get_body(body_out_q)
-            if body_bbox is not None:
-                body_bbox = frame_norm(frame, body_bbox)
-
-            if face_bbox is not None and self.stress_bool:
-                face = frame[
-                    face_bbox[1] : face_bbox[3],
-                    face_bbox[0] : face_bbox[2],
-                    :,
-                ]
-                stress = self._get_stress(face, stress_in_q, stress_out_q)
-            else:
-                stress = None
-
-            calculator_results = self._get_calculator(calculator_out_q)
-
+            pipeline_result = self.get_process_streams(
+                frame, 
+                depth_frame, 
+                face_out_q,
+                stress_in_q,
+                stress_out_q,
+                body_out_q,
+                calculator_config_q,
+                calculator_out_q
+            )
             # Code for showing results in CV2
             if show_results:
                 self._show_results(
-                    frame, depth_frame, body_bbox, face_bbox, stress, roi_breath
+                    frame, 
+                    depth_frame, 
+                    pipeline_result.body_detection, 
+                    pipeline_result.face_detection, 
+                    pipeline_result.stress, 
+                    pipeline_result.roi_breath
                 )
 
                 if cv2.waitKey(1) == ord("q"):
                     break
 
-            yield PipelineOut(
-                display=frame,
-                face_detection=face_bbox,
-                body_detection=body_bbox,
-                stress=stress,
-                depth=depth_frame,
-                calculator_results=calculator_results,
-            )
+            yield pipeline_result
 
 
 def main(

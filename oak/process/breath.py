@@ -8,8 +8,8 @@ class Breath(ProcessBase):
     name: str = "Breath"
 
     # Width and height
-    height: int = 480
-    width: int = 640
+    height: int = 300
+    width: int = 300
 
     # We need to be accurate, so we use a very small ROI
     topLeft:dict[str,float] = {"x": 0.4, "y": 0.4}
@@ -19,7 +19,7 @@ class Breath(ProcessBase):
     width_roi:int = 20
 
     # Position dx and dy of the ROI
-    dy:float = 0.9
+    dy:float = 0.4
     dx:float = 1.5
 
     xmin:int = 0
@@ -31,16 +31,18 @@ class Breath(ProcessBase):
         self.ser_score = self.ser_score.iloc[-int(len(self.ser_score) / 4) :]
 
     def _get_roi_coordinates(self, face_detections: Iterable[int]):
+        x1,y1,x2,y2 = face_detections
         # ROI coordinates
         # width_roi is the size of the ROI, user-defined
         # dx and dy can be change interactively using the WASD keys
         self.xmin = int(
-            face_detections[0]
-            + self.dx * (face_detections[2] - face_detections[0]) / 2
+            x1
+            + self.dx * (x2 - x1) / 2
         ) - int(self.width_roi / 2)
+        
         self.ymin = int(
-            face_detections[3]
-            + self.dy * (face_detections[3] - face_detections[1])
+            y2
+            + self.dy * (y2 - y1)
         )
         self.xmax = self.xmin + self.width_roi
         self.ymax = self.ymin + self.width_roi
@@ -89,6 +91,7 @@ class Breath(ProcessBase):
             self.topLeft["y"] = (
                 self.bottomRight["y"] - self.width_roi
             )
+        
 
     def _get_depth_roi(self, calculator_results: List[int]) -> int:
         # Measure depth from stereo-matching between left-right cameras and adds the value to the variable z
@@ -104,9 +107,12 @@ class Breath(ProcessBase):
     def update(
         self,
         face_detections: Iterable[int],
-        depth_frame: np.array,
+        frame_shape:tuple[int],
         calculator_results: List[int],
     ):
+        self.width = frame_shape[1]
+        self.height = frame_shape[0]
+
         if face_detections is not None:
             self._get_roi_coordinates(face_detections)
 

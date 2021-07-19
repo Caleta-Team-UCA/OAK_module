@@ -11,11 +11,6 @@ import typer
 from oak.pipeline.oak_parent import OAKParent
 from oak.utils.opencv import frame_norm
 
-PipelineOut = namedtuple(
-    "PipelineOut",
-    "display face_detection body_detection stress depth calculator_results",
-)
-
 
 class OAKVideo(OAKParent):
     width: int = 300
@@ -31,7 +26,7 @@ class OAKVideo(OAKParent):
 
     calculator_config_name: str = "calculator_config"
 
-    depth_resolution:Optional[tuple[int]] = (1280, 720)
+    depth_resolution:Optional[tuple[int]] = (640, 480)
 
     def __init__(
         self,
@@ -152,9 +147,13 @@ class OAKVideo(OAKParent):
         cap_right = cv2.VideoCapture(f"{video_path}-right.mp4")
 
         while cap_color.isOpened():
+            self.breath_roi_corners = yield
+
             read_correctly_1, color_frame = cap_color.read()
             read_correctly_2, left_frame = cap_left.read()
             read_correctly_3, right_frame = cap_right.read()
+
+            self.rgb_resolution = color_frame.shape
 
             if not (read_correctly_1 and read_correctly_2 and read_correctly_3):
                 break
@@ -163,62 +162,41 @@ class OAKVideo(OAKParent):
             img = process_frame(color_frame, self.width, self.height)
             color_in_q.send(img)
 
-            img = process_frame(left_frame, 1280, 720)
+            img = process_frame(left_frame, self.depth_resolution[0], self.depth_resolution[1])
             left_in_q.send(img)
 
-            img = process_frame(right_frame, 1280, 720)
+            img = process_frame(right_frame, self.depth_resolution[0], self.depth_resolution[1])
             right_in_q.send(img)
-
-            if roi_breath is not None:
-                self.breath_roi_corners = roi_breath
-                config = dai.SpatialLocationCalculatorConfigData()
-                top_left = dai.Point2f(roi_breath[0], roi_breath[1])
-                bottom_right = dai.Point2f(roi_breath[2], roi_breath[3])
-                config.roi = dai.Rect(top_left, bottom_right)
-                cfg = dai.SpatialLocationCalculatorConfig()
-                cfg.addROI(config)
-                calculator_config_q.send(cfg)
 
             frame = color_frame
             depth_frame = self._get_depth(depth_out_q)
 
-            face_bbox = self._get_face(face_out_q)
-            if face_bbox is not None:
-                face_bbox = frame_norm(frame, face_bbox)
-
-            body_bbox = self._get_body(body_out_q)
-            if body_bbox is not None:
-                body_bbox = frame_norm(frame, body_bbox)
-
-            if face_bbox is not None and self.stress_bool:
-                face = frame[
-                    face_bbox[1] : face_bbox[3],
-                    face_bbox[0] : face_bbox[2],
-                    :,
-                ]
-                stress = self._get_stress(face, stress_in_q, stress_out_q)
-            else:
-                stress = None
-
-            calculator_results = self._get_calculator(calculator_out_q)
+            pipeline_result = self.get_process_streams(
+                frame, 
+                depth_frame, 
+                face_out_q,
+                stress_in_q,
+                stress_out_q,
+                body_out_q,
+                calculator_config_q,
+                calculator_out_q
+            )
 
             # Code for showing results in CV2
             if show_results:
                 self._show_results(
-                    frame, depth_frame, body_bbox, face_bbox, stress, roi_breath
+                    frame, 
+                    depth_frame, 
+                    pipeline_result.body_detection, 
+                    pipeline_result.face_detection, 
+                    pipeline_result.stress, 
+                    pipeline_result.roi_breath
                 )
 
                 if cv2.waitKey(1) == ord("q"):
                     break
 
-            yield PipelineOut(
-                display=frame,
-                face_detection=face_bbox,
-                body_detection=body_bbox,
-                stress=stress,
-                depth=depth_frame,
-                calculator_results=calculator_results,
-            )
+            yield pipeline_result
 
 
 def main(
