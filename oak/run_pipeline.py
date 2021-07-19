@@ -76,14 +76,7 @@ def main(
     while True:
         roi_points = breath.get_breath_config().get_roi_points()
         next(generator)
-        result = generator.send(
-            [
-                roi_points[0]["x"],
-                roi_points[0]["y"],
-                roi_points[1]["x"],
-                roi_points[1]["y"],
-            ]
-        )
+        result = generator.send(breath.get_roi_corners())
 
         # Process activity
         if result.body_detection is not None and result.face_detection is not None:
