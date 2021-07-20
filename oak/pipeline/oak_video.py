@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Tuple
 
 import cv2
 import depthai as dai
@@ -22,7 +22,7 @@ class OAKVideo(OAKParent):
 
     calculator_config_name: str = "calculator_config"
 
-    depth_resolution: Optional[tuple[int]] = (640, 480)
+    depth_resolution: Optional[Tuple[int]] = (640, 480)
 
     def __init__(
         self,
