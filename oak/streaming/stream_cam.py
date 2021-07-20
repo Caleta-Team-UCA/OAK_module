@@ -106,12 +106,9 @@ def gen_frames():  # generate frame by frame from camera
 
 
 if __name__ == "__main__":
-    try:
-        threads = [
-            threading.Thread(target=gen_frames, args=()),
-            threading.Thread(target=push_frame, args=()),
-        ]
-        [thread.setDaemon(True) for thread in threads]
-        [thread.start() for thread in threads]
-    except:
-        pass
+    threads = [
+        threading.Thread(target=gen_frames, args=()),
+        threading.Thread(target=push_frame, args=()),
+    ]
+    [thread.setDaemon(True) for thread in threads]
+    [thread.start() for thread in threads]
