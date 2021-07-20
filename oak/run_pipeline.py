@@ -22,7 +22,7 @@ post_params = {
 }
 
 
-def main(
+def run_pipeline(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
@@ -114,4 +114,4 @@ def main(
 
 
 if __name__ == "__main__":
-    typer.run(main)
+    typer.run(run_pipeline)
