@@ -1,7 +1,5 @@
 from multiprocessing import Process, Queue
 from time import time
-from requests import post
-
 import typer
 import cv2
 import numpy as np
