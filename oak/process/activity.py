@@ -80,21 +80,36 @@ class Activity(ProcessBase):
 
     @property
     def arm_right(self):
-        return np.sqrt(np.power(self.ser_right, 2) + np.power(self.ser_up, 2))
+        ser = np.sqrt(np.power(self.ser_right, 2) + np.power(self.ser_up, 2))
+        ser[ser > 1] = 1
+        return ser
 
     @property
     def arm_left(self):
-        return np.sqrt(np.power(self.ser_left, 2) + np.power(self.ser_up, 2))
+        ser = np.sqrt(np.power(self.ser_left, 2) + np.power(self.ser_up, 2))
+        ser[ser > 1] = 1
+        return ser
 
     @property
     def legs(self):
-        return self.ser_down
+        ser = self.ser_down
+        ser[ser > 1] = 1
+        return ser
 
-    def get_dict_series(self) -> dict:
+    @property
+    def dict_series(self) -> dict:
         return {
             "Right arm": self.arm_right,
             "Left arm": self.arm_left,
             "Legs": self.legs,
+        }
+
+    @property
+    def dict_scores(self) -> dict:
+        return {
+            "left": self.arm_left.iloc[-1],
+            "right": self.arm_right.iloc[-1],
+            "down": self.legs.iloc[-1],
         }
 
     def _update_score_series(self):
