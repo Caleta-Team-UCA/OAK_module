@@ -1,9 +1,13 @@
+import threading
 from time import time
 from requests import post
 
 import typer
 import cv2
 import numpy as np
+import subprocess as sp
+import queue
+import threading
 
 from oak.utils.results import PlotSeries
 from oak.pipeline.oak_cam import OAKCam
@@ -13,17 +17,60 @@ from oak.process.stress import Stress
 from oak.process.breath import Breath
 from oak.utils.requests import ServerPost
 
+rtmp_url = "rtsp://vai.uca.es:1935/mystream"
+command = [
+    "ffmpeg",
+    "-y",
+    "-f",
+    "rawvideo",
+    "-vcodec",
+    "rawvideo",
+    "-pix_fmt",
+    "bgr24",
+    "-s",
+    "{}x{}".format(300, 300),
+    "-i",
+    "-",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-preset",
+    "ultrafast",
+    "-f",
+    "rtsp",
+    rtmp_url,
+]
+
+
+def push_frame(frame_queue):
+    p = None
+
+    while True:
+        if len(command) > 0:
+            p = sp.Popen(command, stdin=sp.PIPE)
+            break
+
+    while True:
+        if frame_queue.empty() != True:
+            frame = frame_queue.get()
+            p.stdin.write(frame.tostring())
+
+
 RASPBERRY_RESOLUTION = (480, 640)
 
 
-def main(
+def run_pipeline(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
     video_path: str = None,  # "videos_3_cams/21",
     frequency: float = 5,
     plot_results: bool = True,
-    post_server: bool = False,
+    post_server: bool = True,
+    stream: bool = True,
+    server_url: str = "http://vai.uca.es",
+    server_port: str = "5000",
 ):
     """Runs the OAK pipeline, streaming from a video file or from the camera, if
     no video file is provided. The pipeline shows on screen the video on real time,
@@ -54,6 +101,10 @@ def main(
     stre = Stress()
     breath = Breath()
 
+    streaming_queue = queue.Queue()
+    thread = threading.Thread(target=push_frame, args=(streaming_queue,))
+    thread.start()
+
     win_name = "OAK results"
 
     if plot_results:
@@ -67,7 +118,7 @@ def main(
         processor_parameters = {"video_path": video_path, "show_results": plot_results}
 
     if post_server:
-        post_server = ServerPost()
+        post_server = ServerPost(server_url, server_port)
 
     start_time = time()
     generator = processor.get(**processor_parameters)
@@ -128,6 +179,9 @@ def main(
         # algún tipo de procesamiento con los datos
         # sleep(0.05)
 
+        if stream:
+            streaming_queue.put(result.display)
+
         if plot_results:
             # print(1, plot_img.shape, pipeline_image.shape)
 
@@ -166,4 +220,4 @@ def main(
 
 
 if __name__ == "__main__":
-    typer.run(main)
+    typer.run(run_pipeline)

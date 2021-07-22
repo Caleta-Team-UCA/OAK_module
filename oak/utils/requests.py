@@ -20,7 +20,7 @@ class ServerPost:
         )
         return r.text
 
-    def uploadInformation(self, endpoint, jsondata, token):
+    def _upload_information(self, endpoint, jsondata, token):
         headers = {"token": token, "Content-Type": "application/json"}
         print(
             str(jsondata)
@@ -43,4 +43,4 @@ class ServerPost:
         data["value"] = '{"value":' + str(value) + "}"
         data["babyid"] = babyid
         print(data)
-        self.__uploadInformation("event", data, token)
+        self._upload_information("event", data, token)
