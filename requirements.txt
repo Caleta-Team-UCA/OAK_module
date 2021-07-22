@@ -37,7 +37,7 @@ numpy==1.19.5
     #   oak (setup.py)
     #   opencv-python
     #   pandas
-opencv-python==4.5.2.54
+opencv-python==4.5.*
     # via oak (setup.py)
 packaging==20.9
     # via pytest

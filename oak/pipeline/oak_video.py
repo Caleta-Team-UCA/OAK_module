@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Tuple
 
 import cv2
 import depthai as dai
@@ -22,7 +22,7 @@ class OAKVideo(OAKParent):
 
     calculator_config_name: str = "calculator_config"
 
-    depth_resolution: Optional[tuple[int]] = (640, 480)
+    depth_resolution: Optional[Tuple[int]] = (640, 480)
 
     def __init__(
         self,
@@ -79,7 +79,6 @@ class OAKVideo(OAKParent):
         self,
         video_path: str,
         show_results: bool = False,
-        roi_breath: Optional[Iterable[float]] = None,
     ) -> namedtuple:
         """Get all the results that output the entire Pipeline.
         This function works as a generator, so it can be called several times.
@@ -184,7 +183,7 @@ class OAKVideo(OAKParent):
 
             # Code for showing results in CV2
             if show_results:
-                self._show_results(
+                cv2_image = self._show_results(
                     frame,
                     depth_frame,
                     pipeline_result.body_detection,
@@ -193,10 +192,10 @@ class OAKVideo(OAKParent):
                     pipeline_result.roi_breath,
                 )
 
-                if cv2.waitKey(1) == ord("q"):
-                    break
+            else:
+                cv2_image = None
 
-            yield pipeline_result
+            yield pipeline_result, cv2_image
 
 
 def main(
