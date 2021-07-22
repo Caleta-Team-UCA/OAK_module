@@ -78,28 +78,49 @@ class Activity(ProcessBase):
             pd.Series([down], index=[self.total_elements])
         )
 
+    @property
+    def arm_right(self):
+        ser = np.sqrt(np.power(self.ser_right, 2) + np.power(self.ser_up, 2))
+        ser[ser > 1] = 1
+        return ser
+
+    @property
+    def arm_left(self):
+        ser = np.sqrt(np.power(self.ser_left, 2) + np.power(self.ser_up, 2))
+        ser[ser > 1] = 1
+        return ser
+
+    @property
+    def legs(self):
+        ser = self.ser_down
+        ser[ser > 1] = 1
+        return ser
+
+    @property
+    def dict_series(self) -> dict:
+        return {
+            "Right arm": self.arm_right,
+            "Left arm": self.arm_left,
+            "Legs": self.legs,
+        }
+
+    @property
+    def dict_scores(self) -> dict:
+        return {
+            "left": self.arm_left.iloc[-1],
+            "right": self.arm_right.iloc[-1],
+            "down": self.legs.iloc[-1],
+        }
+
     def _update_score_series(self):
         """Updates score status"""
         # Store the previous status
         status_before = self.status.copy()
-        # Get the last values of each series
-        right = self.ser_right.iloc[-1]
-        left = self.ser_left.iloc[-1]
-        down = self.ser_down.iloc[-1]
-        if down < 3.1:
-            self.status[2] = 0
-            self.status[3] = 0
-        else:
-            self.status[2] = 1
-            self.status[3] = 1
-        if left < 0.6:
-            self.status[0] = 0
-        else:
-            self.status[0] = 1
-        if right < 0.6:
-            self.status[1] = 0
-        else:
-            self.status[1] = 1
+        # Update the status
+        self.status[0] = 0 if self.arm_left.iloc[-1] < 0.6 else 1
+        self.status[1] = 0 if self.arm_right.iloc[-1] < 0.6 else 1
+        self.status[2] = 0 if self.legs.iloc[-1] < 3.1 else 1
+        self.status[3] = 0 if self.legs.iloc[-1] < 3.1 else 1
         # Compute the mobility score as the number of status that have changed
         mob_score = np.mean(np.abs(np.array(self.status) - np.array(status_before)))
         self.ser_score = self.ser_score.append(
