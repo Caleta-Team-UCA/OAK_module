@@ -1,4 +1,4 @@
-import threading
+from multiprocessing import Process, Queue
 from time import time
 from requests import post
 
@@ -6,8 +6,6 @@ import typer
 import cv2
 import numpy as np
 import subprocess as sp
-import queue
-import threading
 
 from oak.utils.results import PlotSeries
 from oak.pipeline.oak_cam import OAKCam
@@ -16,6 +14,44 @@ from oak.process.activity import Activity
 from oak.process.stress import Stress
 from oak.process.breath import Breath
 from oak.utils.requests import ServerPost
+
+
+def show_cv2_window(win_name, raspberry_resolution, pipeline_img_queue, plot_img_queue):
+    cv2.namedWindow(win_name, cv2.WINDOW_AUTOSIZE)
+    while True:
+        pipeline_img = pipeline_img_queue.get()
+        plot_img = plot_img_queue.get()
+
+        pipeline_img = cv2.resize(
+            pipeline_img, (raspberry_resolution[0], raspberry_resolution[0])
+        )
+
+        res_dif = raspberry_resolution[1] - raspberry_resolution[0]
+        scale_proportion = res_dif / plot_img.shape[1]
+        plot_img = cv2.resize(
+            plot_img,
+            (
+                res_dif,
+                int(plot_img.shape[0] * scale_proportion),
+            ),
+        )
+
+        new_image = (
+            np.ones((raspberry_resolution[0], raspberry_resolution[1], 3), np.uint8)
+            * 255
+        )
+
+        new_image[0:, 0 : pipeline_img.shape[1], :3] = pipeline_img
+        new_image[
+            0 : plot_img.shape[0],
+            pipeline_img.shape[1] : pipeline_img.shape[1] + plot_img.shape[1],
+            :3,
+        ] = plot_img
+
+        cv2.imshow(win_name, new_image)
+        if cv2.waitKey(1) == ord("q"):
+            break
+
 
 rtmp_url = "rtsp://vai.uca.es:1935/mystream"
 command = [
@@ -64,7 +100,7 @@ def run_pipeline(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
-    video_path: str = None,  # "videos_3_cams/21",
+    video_path: str = "videos_3_cams/21",
     frequency: float = 5,
     plot_results: bool = True,
     post_server: bool = True,
@@ -96,19 +132,26 @@ def run_pipeline(
     post_server : bool, optional
         Wheter to send results to the server or not.
     """
-
     act = Activity()
     stre = Stress()
     breath = Breath()
 
-    streaming_queue = queue.Queue()
-    thread = threading.Thread(target=push_frame, args=(streaming_queue,))
-    thread.start()
-
-    win_name = "OAK results"
+    if stream:
+        streaming_queue = Queue()
+        stream_process = Process(target=push_frame, args=(streaming_queue,))
+        stream_process.start()
 
     if plot_results:
         plot_series = PlotSeries([stre, act, breath])
+
+        win_name = "OAK results"
+        pipeline_img_queue = Queue()
+        plot_img_queue = Queue()
+        show_process = Process(
+            target=show_cv2_window,
+            args=(win_name, RASPBERRY_RESOLUTION, pipeline_img_queue, plot_img_queue),
+        )
+        show_process.start()
 
     if video_path is None:
         processor = OAKCam(body_path_model, face_path_model, stress_path_model)
@@ -183,37 +226,8 @@ def run_pipeline(
             streaming_queue.put(result.display)
 
         if plot_results:
-            # print(1, plot_img.shape, pipeline_image.shape)
-
-            pipeline_image = cv2.resize(
-                pipeline_image, (RASPBERRY_RESOLUTION[0], RASPBERRY_RESOLUTION[0])
-            )
-
-            res_dif = RASPBERRY_RESOLUTION[1] - RASPBERRY_RESOLUTION[0]
-            scale_proportion = res_dif / plot_img.shape[1]
-            plot_img = cv2.resize(
-                plot_img,
-                (
-                    res_dif,
-                    int(plot_img.shape[0] * scale_proportion),
-                ),
-            )
-
-            # print(2, plot_img.shape, pipeline_image.shape)
-
-            new_image = (
-                np.ones((RASPBERRY_RESOLUTION[0], RASPBERRY_RESOLUTION[1], 3), np.uint8)
-                * 255
-            )
-
-            new_image[0:, 0 : pipeline_image.shape[1], :3] = pipeline_image
-            new_image[
-                0 : plot_img.shape[0],
-                pipeline_image.shape[1] : pipeline_image.shape[1] + plot_img.shape[1],
-                :3,
-            ] = plot_img
-
-            cv2.imshow(win_name, new_image)
+            pipeline_img_queue.put(pipeline_image)
+            plot_img_queue.put(plot_img)
 
             if cv2.waitKey(1) == ord("q"):
                 break
