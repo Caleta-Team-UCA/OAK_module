@@ -26,7 +26,8 @@ class ProcessBase:
             .to_numpy()
         )
 
-    def get_dict_series(self) -> dict:
+    @property
+    def dict_series(self) -> dict:
         """Returns a dictionary of series to plot"""
         return {"movavg": self.get_moving_average()}
 
