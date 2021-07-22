@@ -193,7 +193,7 @@ def run_pipeline(
             if post_server:
                 post_server.save(
                     ServerPost.TYPE_ACTIVITY,
-                    act.score.mean(),
+                    act.dict_scores,
                     "1",
                     "F9qkMQ1151Xn7k7Q5CR3",
                 )
