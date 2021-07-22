@@ -40,7 +40,7 @@ class PlotSeries:
 
     def _plot_process(self, proc: ProcessBase, ax):
         """Plots a process in given axis"""
-        dict_plot = proc.get_dict_series()
+        dict_plot = proc.dict_series
         for i, (name, ser_sub) in enumerate(dict_plot.items()):
             ax.plot(
                 proc.score.index.to_numpy(),
