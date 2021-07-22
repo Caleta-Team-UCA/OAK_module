@@ -54,7 +54,7 @@ def push_frame(frame_queue):
     while True:
         if frame_queue.empty() != True:
             frame = frame_queue.get()
-            p.stdin.write(frame.tobyte())
+            p.stdin.write(frame.tostring())
 
 
 RASPBERRY_RESOLUTION = (480, 640)
@@ -67,8 +67,10 @@ def run_pipeline(
     video_path: str = None,  # "videos_3_cams/21",
     frequency: float = 5,
     plot_results: bool = True,
-    post_server: bool = False,
+    post_server: bool = True,
     stream: bool = True,
+    server_url: str = "http://vai.uca.es",
+    server_port: str = "5000",
 ):
     """Runs the OAK pipeline, streaming from a video file or from the camera, if
     no video file is provided. The pipeline shows on screen the video on real time,
@@ -116,7 +118,7 @@ def run_pipeline(
         processor_parameters = {"video_path": video_path, "show_results": plot_results}
 
     if post_server:
-        post_server = ServerPost()
+        post_server = ServerPost(server_url, server_port)
 
     start_time = time()
     generator = processor.get(**processor_parameters)
