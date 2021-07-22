@@ -7,6 +7,7 @@ import depthai as dai
 import numpy as np
 import typer
 from oak.pipeline.oak_parent import OAKParent
+from oak.streaming.stream_cam import frame_queue
 
 
 class OAKCam(OAKParent):
@@ -163,11 +164,17 @@ class OAKCam(OAKParent):
             name=self.calculator_output_name, maxSize=1, blocking=False
         )
 
+        # Global stream queue
+        global frame_queue
+
         while True:
             self.breath_roi_corners = yield
 
             frame = self._get_cam_preview(cam_out_q)
             depth_frame = self._get_depth(depth_out_q)
+
+            # Add frame to streaming queue
+            frame_queue.put(frame)
 
             pipeline_result = self.get_process_streams(
                 frame,
@@ -181,7 +188,7 @@ class OAKCam(OAKParent):
             )
             # Code for showing results in CV2
             if show_results:
-                self._show_results(
+                cv2_image = self._show_results(
                     frame,
                     depth_frame,
                     pipeline_result.body_detection,
@@ -189,11 +196,10 @@ class OAKCam(OAKParent):
                     pipeline_result.stress,
                     pipeline_result.roi_breath,
                 )
+            else:
+                cv2_image = None
 
-                if cv2.waitKey(1) == ord("q"):
-                    break
-
-            yield pipeline_result
+            yield pipeline_result, cv2_image
 
 
 def main(

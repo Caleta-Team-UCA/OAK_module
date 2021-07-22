@@ -1,7 +1,11 @@
+from multiprocessing import Process, Queue
 from time import time
 from requests import post
 
 import typer
+import cv2
+import numpy as np
+import subprocess as sp
 
 from oak.utils.results import PlotSeries
 from oak.pipeline.oak_cam import OAKCam
@@ -9,27 +13,100 @@ from oak.pipeline.oak_video import OAKVideo
 from oak.process.activity import Activity
 from oak.process.stress import Stress
 from oak.process.breath import Breath
-
-# TODO: meter este diccionario en un config, para poder modificarlo más fácilmente
-server_url = "vai.uca.es/event"
-post_params = {
-    "name": "Juan",
-    "comments": "",
-    "anomaly": False,
-    "type": "",
-    "value": 0,
-    "babyid": 0,
-}
+from oak.utils.requests import ServerPost
 
 
-def main(
+def show_cv2_window(win_name, raspberry_resolution, pipeline_img_queue, plot_img_queue):
+    cv2.namedWindow(win_name, cv2.WINDOW_AUTOSIZE)
+    while True:
+        pipeline_img = pipeline_img_queue.get()
+        plot_img = plot_img_queue.get()
+
+        pipeline_img = cv2.resize(
+            pipeline_img, (raspberry_resolution[0], raspberry_resolution[0])
+        )
+
+        res_dif = raspberry_resolution[1] - raspberry_resolution[0]
+        scale_proportion = res_dif / plot_img.shape[1]
+        plot_img = cv2.resize(
+            plot_img,
+            (
+                res_dif,
+                int(plot_img.shape[0] * scale_proportion),
+            ),
+        )
+
+        new_image = (
+            np.ones((raspberry_resolution[0], raspberry_resolution[1], 3), np.uint8)
+            * 255
+        )
+
+        new_image[0:, 0 : pipeline_img.shape[1], :3] = pipeline_img
+        new_image[
+            0 : plot_img.shape[0],
+            pipeline_img.shape[1] : pipeline_img.shape[1] + plot_img.shape[1],
+            :3,
+        ] = plot_img
+
+        cv2.imshow(win_name, new_image)
+        if cv2.waitKey(1) == ord("q"):
+            break
+
+
+rtmp_url = "rtsp://vai.uca.es:1935/mystream"
+command = [
+    "ffmpeg",
+    "-y",
+    "-f",
+    "rawvideo",
+    "-vcodec",
+    "rawvideo",
+    "-pix_fmt",
+    "bgr24",
+    "-s",
+    "{}x{}".format(300, 300),
+    "-i",
+    "-",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-preset",
+    "ultrafast",
+    "-f",
+    "rtsp",
+    rtmp_url,
+]
+
+
+def push_frame(frame_queue):
+    p = None
+
+    while True:
+        if len(command) > 0:
+            p = sp.Popen(command, stdin=sp.PIPE)
+            break
+
+    while True:
+        if frame_queue.empty() != True:
+            frame = frame_queue.get()
+            p.stdin.write(frame.tostring())
+
+
+RASPBERRY_RESOLUTION = (480, 640)
+
+
+def run_pipeline(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
-    video_path: str = None,  # "videos_3_cams/21",
+    video_path: str = "videos_3_cams/21",
     frequency: float = 5,
     plot_results: bool = True,
-    post_server: bool = False,
+    post_server: bool = True,
+    stream: bool = True,
+    server_url: str = "http://vai.uca.es",
+    server_port: str = "5000",
 ):
     """Runs the OAK pipeline, streaming from a video file or from the camera, if
     no video file is provided. The pipeline shows on screen the video on real time,
@@ -55,13 +132,26 @@ def main(
     post_server : bool, optional
         Wheter to send results to the server or not.
     """
-
     act = Activity()
     stre = Stress()
     breath = Breath()
 
+    if stream:
+        streaming_queue = Queue()
+        stream_process = Process(target=push_frame, args=(streaming_queue,))
+        stream_process.start()
+
     if plot_results:
         plot_series = PlotSeries([stre, act, breath])
+
+        win_name = "OAK results"
+        pipeline_img_queue = Queue()
+        plot_img_queue = Queue()
+        show_process = Process(
+            target=show_cv2_window,
+            args=(win_name, RASPBERRY_RESOLUTION, pipeline_img_queue, plot_img_queue),
+        )
+        show_process.start()
 
     if video_path is None:
         processor = OAKCam(body_path_model, face_path_model, stress_path_model)
@@ -70,12 +160,16 @@ def main(
         processor = OAKVideo(body_path_model, face_path_model, stress_path_model)
         processor_parameters = {"video_path": video_path, "show_results": plot_results}
 
+    if post_server:
+        post_server = ServerPost(server_url, server_port)
+
     start_time = time()
     generator = processor.get(**processor_parameters)
 
+    plot_img = plot_series.update("movavg")
     while True:
         next(generator)
-        result = generator.send(breath.get_roi_corners)
+        result, pipeline_image = generator.send(breath.get_roi_corners)
 
         # Process activity
         if result.body_detection is not None and result.face_detection is not None:
@@ -95,13 +189,29 @@ def main(
 
         if time() - start_time >= frequency:
             if plot_results:
-                plot_series.update("movavg")
+                plot_img = plot_series.update("movavg")
 
             if post_server:
-                post_params["stress"] = stre.get_moving_average().tolist()
-                post_params["act"] = act.get_moving_average().tolist()
-                response = post(server_url, data=post_params)
-                print(response)
+                post_server.save(
+                    ServerPost.TYPE_ACTIVITY,
+                    act.score.mean(),
+                    "1",
+                    "F9qkMQ1151Xn7k7Q5CR3",
+                )
+
+                post_server.save(
+                    ServerPost.TYPE_RESPIRATION,
+                    breath.score.mean(),
+                    "1",
+                    "F9qkMQ1151Xn7k7Q5CR3",
+                )
+
+                post_server.save(
+                    ServerPost.TYPE_STRESS,
+                    stre.score.mean(),
+                    "1",
+                    "F9qkMQ1151Xn7k7Q5CR3",
+                )
 
             act.restart_series()
             stre.restart_series()
@@ -112,6 +222,16 @@ def main(
         # algún tipo de procesamiento con los datos
         # sleep(0.05)
 
+        if stream:
+            streaming_queue.put(result.display)
+
+        if plot_results:
+            pipeline_img_queue.put(pipeline_image)
+            plot_img_queue.put(plot_img)
+
+            if cv2.waitKey(1) == ord("q"):
+                break
+
 
 if __name__ == "__main__":
-    typer.run(main)
+    typer.run(run_pipeline)

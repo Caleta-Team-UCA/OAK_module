@@ -1,4 +1,6 @@
-from typing import Iterable
+from typing import List, Iterable
+import numpy as np
+import cv2
 
 import matplotlib.pyplot as plt
 from oak.process.process_base import ProcessBase
@@ -34,7 +36,7 @@ class PlotSeries:
             ax.set_ylabel(proc.name)
 
         plt.tight_layout()
-        plt.show(block=False)
+        # plt.show(block=False)
 
     def _plot_process(self, proc: ProcessBase, ax):
         """Plots a process in given axis"""
@@ -57,6 +59,15 @@ class PlotSeries:
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+
+        img = np.fromstring(self.fig.canvas.tostring_rgb(), dtype="uint8")
+
+        img = img.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
+
+        # img is rgb, convert to opencv's default bgr
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+        return img
 
     def close(self):
         """Closes the figure"""
