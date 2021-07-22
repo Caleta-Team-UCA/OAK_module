@@ -9,17 +9,7 @@ from oak.pipeline.oak_video import OAKVideo
 from oak.process.activity import Activity
 from oak.process.stress import Stress
 from oak.process.breath import Breath
-
-# TODO: meter este diccionario en un config, para poder modificarlo más fácilmente
-server_url = "vai.uca.es/event"
-post_params = {
-    "name": "Juan",
-    "comments": "",
-    "anomaly": False,
-    "type": "",
-    "value": 0,
-    "babyid": 0,
-}
+from oak.utils.requests import ServerPost
 
 
 def main(
@@ -70,6 +60,9 @@ def main(
         processor = OAKVideo(body_path_model, face_path_model, stress_path_model)
         processor_parameters = {"video_path": video_path, "show_results": plot_results}
 
+    if post_server:
+        post_server = ServerPost()
+
     start_time = time()
     generator = processor.get(**processor_parameters)
 
@@ -98,10 +91,26 @@ def main(
                 plot_series.update("movavg")
 
             if post_server:
-                post_params["stress"] = stre.get_moving_average().tolist()
-                post_params["act"] = act.get_moving_average().tolist()
-                response = post(server_url, data=post_params)
-                print(response)
+                post_server.save(
+                    ServerPost.TYPE_ACTIVITY,
+                    act.score.mean(),
+                    "1",
+                    "F9qkMQ1151Xn7k7Q5CR3",
+                )
+
+                post_server.save(
+                    ServerPost.TYPE_RESPIRATION,
+                    breath.score.mean(),
+                    "1",
+                    "F9qkMQ1151Xn7k7Q5CR3",
+                )
+
+                post_server.save(
+                    ServerPost.TYPE_STRESS,
+                    stre.score.mean(),
+                    "1",
+                    "F9qkMQ1151Xn7k7Q5CR3",
+                )
 
             act.restart_series()
             stre.restart_series()
