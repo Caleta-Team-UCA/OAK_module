@@ -16,7 +16,7 @@ PipelineOut = namedtuple(
 
 class OAKParent(dai.Pipeline):
     # Breath roi corners
-    breath_roi_corners: tuple[float] = (0.5, 0.3, 0.52, 0.32)
+    breath_roi_corners: Tuple[float] = (0.5, 0.3, 0.52, 0.32)
 
     input_name: str = "input"
     stress_input_name: str = "stress_input"
@@ -27,7 +27,7 @@ class OAKParent(dai.Pipeline):
 
     stress_bool: bool = False
 
-    depth_resolution: Optional[tuple[int]] = None
+    depth_resolution: Optional[Tuple[int]] = None
 
     def __init__(
         self,

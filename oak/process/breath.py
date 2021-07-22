@@ -1,4 +1,4 @@
-from typing import Iterable, List
+from typing import Iterable, List, Dict, Tuple
 
 import pandas as pd
 from oak.process.process_base import ProcessBase
@@ -12,8 +12,8 @@ class Breath(ProcessBase):
     width: int = 300
 
     # We need to be accurate, so we use a very small ROI
-    topLeft: dict[str, float] = {"x": 0.4, "y": 0.4}
-    bottomRight: dict[str, float] = {"x": 0.42, "y": 0.42}
+    topLeft: Dict[str, float] = {"x": 0.4, "y": 0.4}
+    bottomRight: Dict[str, float] = {"x": 0.42, "y": 0.42}
 
     # Size of the ROI
     width_roi: int = 20
@@ -74,7 +74,7 @@ class Breath(ProcessBase):
         )
 
     @property
-    def get_roi_corners(self) -> tuple[float]:
+    def get_roi_corners(self) -> Tuple[float]:
         return (
             self.topLeft["x"],
             self.topLeft["y"],
@@ -85,7 +85,7 @@ class Breath(ProcessBase):
     def update(
         self,
         face_detections: Iterable[int],
-        frame_shape: tuple[int],
+        frame_shape: Tuple[int],
         calculator_results: List[int],
     ):
         self.width = frame_shape[1]
