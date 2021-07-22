@@ -20,8 +20,8 @@ class Breath(ProcessBase):
     width_roi: int = 20
 
     # Position dx and dy of the ROI
-    dy: float = 0.4
-    dx: float = 1.5
+    dy: float = 0.5
+    dx: float = 1.3
 
     xmin: int = 0
     ymin: int = 0
@@ -106,6 +106,6 @@ class Breath(ProcessBase):
             self.total_elements += 1
 
     def get_bpm(self, delay):
-        peak_indices, _ = find_peaks(self.ser_score.to_numpy(), prominence=0.3)
+        peak_indices, _ = find_peaks(-1 * self.ser_score.to_numpy(), prominence=0.3)
         peak_count = len(peak_indices)
-        return peak_count / (delay / 60)
+        return peak_count * 60 / delay
