@@ -2,6 +2,8 @@ from time import time
 from requests import post
 
 import typer
+import cv2
+import numpy as np
 
 from oak.utils.results import PlotSeries
 from oak.pipeline.oak_cam import OAKCam
@@ -20,6 +22,8 @@ post_params = {
     "value": 0,
     "babyid": 0,
 }
+
+RASPBERRY_RESOLUTION = (480, 640)
 
 
 def main(
@@ -60,6 +64,8 @@ def main(
     stre = Stress()
     breath = Breath()
 
+    win_name = "OAK results"
+
     if plot_results:
         plot_series = PlotSeries([stre, act, breath])
 
@@ -73,9 +79,10 @@ def main(
     start_time = time()
     generator = processor.get(**processor_parameters)
 
+    plot_img = plot_series.update("movavg")
     while True:
         next(generator)
-        result = generator.send(breath.get_roi_corners)
+        result, pipeline_image = generator.send(breath.get_roi_corners)
 
         # Process activity
         if result.body_detection is not None and result.face_detection is not None:
@@ -95,7 +102,7 @@ def main(
 
         if time() - start_time >= frequency:
             if plot_results:
-                plot_series.update("movavg")
+                plot_img = plot_series.update("movavg")
 
             if post_server:
                 post_params["stress"] = stre.get_moving_average().tolist()
@@ -111,6 +118,42 @@ def main(
         # Aquí simulamos que se estuviera haciendo
         # algún tipo de procesamiento con los datos
         # sleep(0.05)
+
+        if plot_results:
+            # print(1, plot_img.shape, pipeline_image.shape)
+
+            pipeline_image = cv2.resize(
+                pipeline_image, (RASPBERRY_RESOLUTION[0], RASPBERRY_RESOLUTION[0])
+            )
+
+            res_dif = RASPBERRY_RESOLUTION[1] - RASPBERRY_RESOLUTION[0]
+            scale_proportion = res_dif / plot_img.shape[1]
+            plot_img = cv2.resize(
+                plot_img,
+                (
+                    res_dif,
+                    int(plot_img.shape[0] * scale_proportion),
+                ),
+            )
+
+            # print(2, plot_img.shape, pipeline_image.shape)
+
+            new_image = (
+                np.ones((RASPBERRY_RESOLUTION[0], RASPBERRY_RESOLUTION[1], 3), np.uint8)
+                * 255
+            )
+
+            new_image[0:, 0 : pipeline_image.shape[1], :3] = pipeline_image
+            new_image[
+                0 : plot_img.shape[0],
+                pipeline_image.shape[1] : pipeline_image.shape[1] + plot_img.shape[1],
+                :3,
+            ] = plot_img
+
+            cv2.imshow(win_name, new_image)
+
+            if cv2.waitKey(1) == ord("q"):
+                break
 
 
 if __name__ == "__main__":

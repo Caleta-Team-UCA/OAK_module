@@ -1,4 +1,6 @@
 from typing import List
+import numpy as np
+import cv2
 
 import matplotlib.pyplot as plt
 
@@ -39,7 +41,7 @@ class PlotSeries:
             ax.set_ylabel(ser.name)
 
         plt.tight_layout()
-        plt.show(block=False)
+        # plt.show(block=False)
 
     def update(self, method: str = None):
         """Updates the figure"""
@@ -55,6 +57,15 @@ class PlotSeries:
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+
+        img = np.fromstring(self.fig.canvas.tostring_rgb(), dtype="uint8")
+
+        img = img.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
+
+        # img is rgb, convert to opencv's default bgr
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+        return img
 
     def close(self):
         """Closes the figure"""

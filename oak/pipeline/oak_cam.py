@@ -181,7 +181,7 @@ class OAKCam(OAKParent):
             )
             # Code for showing results in CV2
             if show_results:
-                self._show_results(
+                cv2_image = self._show_results(
                     frame,
                     depth_frame,
                     pipeline_result.body_detection,
@@ -189,11 +189,10 @@ class OAKCam(OAKParent):
                     pipeline_result.stress,
                     pipeline_result.roi_breath,
                 )
+            else:
+                cv2_image = None
 
-                if cv2.waitKey(1) == ord("q"):
-                    break
-
-            yield pipeline_result
+            yield pipeline_result, cv2_image
 
 
 def main(
