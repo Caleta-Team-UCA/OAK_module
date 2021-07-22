@@ -1,9 +1,9 @@
-import threading
+from multiprocessing import Process
 
 import typer
 
 from oak.run_pipeline import run_pipeline
-from oak.streaming.stream_cam import push_frame
+from oak.streaming.stream_cam import stream
 
 
 def run_streaming(
@@ -37,16 +37,18 @@ def run_streaming(
         "stress_path_model": stress_path_model,
         "video_path": None,
         "frequency": frequency,
-        "plot_results": False,
+        "plot_results": True,
         "post_server": False,
     }
 
-    threads = [
-        threading.Thread(target=run_pipeline, args=(), kwargs=kwargs),
-        threading.Thread(target=push_frame, args=()),
-    ]
-    [thread.setDaemon(True) for thread in threads]
-    [thread.start() for thread in threads]
+    p1 = Process(target=run_pipeline, args=(), kwargs=kwargs)
+    p2 = Process(target=stream, args=())
+
+    p1.start()
+    p2.start()
+
+    p1.join()
+    p2.join()
 
 
 if __name__ == "__main__":

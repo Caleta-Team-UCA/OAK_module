@@ -105,10 +105,14 @@ def gen_frames():  # generate frame by frame from camera
                 #        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')  # concat frame one by one and show result
 
 
-if __name__ == "__main__":
+def stream():
     threads = [
         threading.Thread(target=gen_frames, args=()),
         threading.Thread(target=push_frame, args=()),
     ]
-    [thread.setDaemon(True) for thread in threads]
+    # [thread.setDaemon(True) for thread in threads]
     [thread.start() for thread in threads]
+
+
+if __name__ == "__main__":
+    stream()
