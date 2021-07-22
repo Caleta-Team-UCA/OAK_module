@@ -1,9 +1,13 @@
+import threading
 from time import time
 from requests import post
 
 import typer
 import cv2
 import numpy as np
+import subprocess as sp
+import queue
+import threading
 
 from oak.utils.results import PlotSeries
 from oak.pipeline.oak_cam import OAKCam
@@ -11,6 +15,46 @@ from oak.pipeline.oak_video import OAKVideo
 from oak.process.activity import Activity
 from oak.process.stress import Stress
 from oak.process.breath import Breath
+
+rtmp_url = "rtsp://vai.uca.es:1935/mystream"
+command = [
+    "ffmpeg",
+    "-y",
+    "-f",
+    "rawvideo",
+    "-vcodec",
+    "rawvideo",
+    "-pix_fmt",
+    "bgr24",
+    "-s",
+    "{}x{}".format(300, 300),
+    "-i",
+    "-",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-preset",
+    "ultrafast",
+    "-f",
+    "rtsp",
+    rtmp_url,
+]
+
+
+def push_frame(frame_queue):
+    p = None
+
+    while True:
+        if len(command) > 0:
+            p = sp.Popen(command, stdin=sp.PIPE)
+            break
+
+    while True:
+        if frame_queue.empty() != True:
+            frame = frame_queue.get()
+            p.stdin.write(frame.tobyte())
+
 
 # TODO: meter este diccionario en un config, para poder modificarlo más fácilmente
 server_url = "vai.uca.es/event"
@@ -34,6 +78,7 @@ def run_pipeline(
     frequency: float = 5,
     plot_results: bool = True,
     post_server: bool = False,
+    stream: bool = True,
 ):
     """Runs the OAK pipeline, streaming from a video file or from the camera, if
     no video file is provided. The pipeline shows on screen the video on real time,
@@ -63,6 +108,10 @@ def run_pipeline(
     act = Activity()
     stre = Stress()
     breath = Breath()
+
+    streaming_queue = queue.Queue()
+    thread = threading.Thread(target=push_frame, args=(streaming_queue,))
+    thread.start()
 
     win_name = "OAK results"
 
@@ -118,6 +167,9 @@ def run_pipeline(
         # Aquí simulamos que se estuviera haciendo
         # algún tipo de procesamiento con los datos
         # sleep(0.05)
+
+        if stream:
+            streaming_queue.put(result.display)
 
         if plot_results:
             # print(1, plot_img.shape, pipeline_image.shape)
