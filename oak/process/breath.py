@@ -2,6 +2,7 @@ from typing import Iterable, List, Dict, Tuple
 
 import pandas as pd
 from oak.process.process_base import ProcessBase
+from scipy.signal import find_peaks
 
 
 class Breath(ProcessBase):
@@ -103,3 +104,8 @@ class Breath(ProcessBase):
             )
 
             self.total_elements += 1
+
+    def get_bmp(self, delay):
+        peak_indices, _ = find_peaks(self.ser_score.to_numpy(), prominence=0.3)
+        peak_count = len(peak_indices)
+        return peak_count / (delay / 60)
