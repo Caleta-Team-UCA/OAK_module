@@ -1,7 +1,5 @@
 from multiprocessing import Process, Queue
 from time import time
-from requests import post
-
 import typer
 import cv2
 import numpy as np
@@ -187,7 +185,8 @@ def run_pipeline(
                 result.calculator_results,
             )
 
-        if time() - start_time >= frequency:
+        delay = time() - start_time
+        if delay >= frequency:
             if plot_results:
                 plot_img = plot_series.update("movavg")
 
@@ -201,7 +200,7 @@ def run_pipeline(
 
                 post_server.save(
                     ServerPost.TYPE_RESPIRATION,
-                    breath.score.mean(),
+                    breath.get_bpm(delay),
                     "1",
                     "F9qkMQ1151Xn7k7Q5CR3",
                 )
