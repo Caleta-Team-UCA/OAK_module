@@ -107,9 +107,9 @@ class Activity(ProcessBase):
     @property
     def dict_scores(self) -> dict:
         return {
-            "left": self.arm_left.iloc[-1],
-            "right": self.arm_right.iloc[-1],
-            "down": self.legs.iloc[-1],
+            "left": self.arm_left.mean(),
+            "right": self.arm_right.mean(),
+            "down": self.legs.mean(),
         }
 
     def _update_score_series(self):
