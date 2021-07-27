@@ -35,3 +35,16 @@ python oak/run_pipeline.py --video-path PATH
 ```
 
 In this case, only one window is shown: the image with the bounding boxes. No depth map can be computed from a pre-recorded video.
+
+## Raspberry installation
+First install all libraries:
+```
+python3.7 -m pip install -r requirements.txt
+python3.7 -m pip install -e .
+```
+
+Now install important cv2 dependencies:
+```
+sudo apt upgrade
+sudo apt-get install -y libatlas-base-dev libhdf5-dev libhdf5-serial-dev libatlas-base-dev libjasper-dev  libqtgui4  libqt4-test
+```
