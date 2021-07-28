@@ -14,7 +14,7 @@ from oak.process.breath import Breath
 from oak.utils.requests import ServerPost
 
 
-def show_cv2_window(win_name, raspberry_resolution, pipeline_img_queue, plot_img_queue):
+def show_cv2_window(win_name, raspberry_resolution, pipeline_img_queue, plot_img_queue,instruction_queue):
     cv2.namedWindow(win_name, cv2.WINDOW_AUTOSIZE)
     while True:
         pipeline_img = pipeline_img_queue.get()
@@ -47,8 +47,8 @@ def show_cv2_window(win_name, raspberry_resolution, pipeline_img_queue, plot_img
         ] = plot_img
 
         cv2.imshow(win_name, new_image)
-        if cv2.waitKey(1) == ord("q"):
-            break
+        key = cv2.waitKey(1)
+        instruction_queue.put(key)
 
 
 rtmp_url = "rtsp://vai.uca.es:1935/mystream"
@@ -98,7 +98,7 @@ def run_pipeline(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
-    video_path: str = "videos_3_cams/21",
+    video_path: str = None,#"videos_3_cams/21",
     frequency: float = 5,
     plot_results: bool = True,
     post_server: bool = True,
@@ -145,9 +145,10 @@ def run_pipeline(
         win_name = "OAK results"
         pipeline_img_queue = Queue()
         plot_img_queue = Queue()
+        instruction_queue = Queue()
         show_process = Process(
             target=show_cv2_window,
-            args=(win_name, RASPBERRY_RESOLUTION, pipeline_img_queue, plot_img_queue),
+            args=(win_name, RASPBERRY_RESOLUTION, pipeline_img_queue, plot_img_queue,instruction_queue),
         )
         show_process.start()
 
@@ -207,7 +208,7 @@ def run_pipeline(
 
                 post_server.save(
                     ServerPost.TYPE_STRESS,
-                    stre.score.mean(),
+                    stre.score.mean() * 100,
                     "1",
                     "F9qkMQ1151Xn7k7Q5CR3",
                 )
@@ -228,9 +229,25 @@ def run_pipeline(
             pipeline_img_queue.put(pipeline_image)
             plot_img_queue.put(plot_img)
 
-            if cv2.waitKey(1) == ord("q"):
-                break
+            step_size = 0.01
 
+            key = instruction_queue.get()
+
+            if key == ord("q"):
+                break
+            elif key == ord('w'):
+                breath.dy -= step_size
+            elif key == ord('a'):
+                breath.dx -= step_size 
+            elif key == ord('s'):
+                breath.dy += step_size
+            elif key == ord('d'):
+                breath.dx += step_size 
+            elif key == ord('n') and breath.width_roi -1 > 0:
+                breath.width_roi -= 1
+            elif key == ord('m'):
+                breath.width_roi += 1
+            
 
 if __name__ == "__main__":
     typer.run(run_pipeline)
