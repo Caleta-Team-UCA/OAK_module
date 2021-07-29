@@ -17,23 +17,24 @@ class PlotSeries:
         list_proc : Iterable[ProcessBase]
             List of ProcessBase objects
         """
+        self.list_proc = list_proc
         self.fig = plt.figure()
 
         self.proc_plot_data = {}
         for i, proc in enumerate(list_proc):
-            ax = plt.subplot(int(f"{len(list_proc)}1{i + 1}"))
+            self.ax = plt.subplot(int(f"{len(list_proc)}1{i + 1}"))
             self.fig.canvas.draw()
 
             self.proc_plot_data[proc.name] = {}
             self.proc_plot_data[proc.name]["object"] = proc
             # self.proc_plot_data[proc.name]["color"] = COLORS[i]
-            self.proc_plot_data[proc.name]["ax"] = ax
+            self.proc_plot_data[proc.name]["ax"] = self.ax
 
-            self._plot_process(proc, ax)
+            self._plot_process(proc, self.ax)
 
-            ax.grid()
-            ax.set_xlabel("Time (frames)")
-            ax.set_ylabel(proc.name)
+            self.ax.grid()
+            self.ax.set_xlabel("Time (frames)")
+            self.ax.set_ylabel(proc.name)
 
         plt.tight_layout()
         # plt.show(block=False)
@@ -68,6 +69,10 @@ class PlotSeries:
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
         return img
+
+    def clear(self):
+        plt.clf()
+        self.__init__(self.list_proc)
 
     def close(self):
         """Closes the figure"""

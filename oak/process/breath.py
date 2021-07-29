@@ -106,6 +106,6 @@ class Breath(ProcessBase):
             self.total_elements += 1
 
     def get_bpm(self, delay):
-        peak_indices, _ = find_peaks(-1 * self.ser_score.to_numpy(), prominence=0.3)
+        peak_indices, _ = find_peaks(-1 * self.get_moving_average(), prominence=0.3)
         peak_count = len(peak_indices)
         return peak_count * 60 / delay
