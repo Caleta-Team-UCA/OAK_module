@@ -97,14 +97,14 @@ def push_frame(frame_queue):
             p.stdin.write(frame.tostring())
 
 
-RASPBERRY_RESOLUTION = (400, 800)
+RASPBERRY_RESOLUTION = (720, 1280)
 
 
 def run_pipeline(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
-    video_path: str = None,  # "videos_3_cams/21",
+    video_path: str = "videos_3_cams/8",
     frequency: float = 5,
     plot_results: bool = True,
     post_server: bool = True,
