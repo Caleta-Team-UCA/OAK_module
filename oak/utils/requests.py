@@ -42,5 +42,7 @@ class ServerPost:
         data["type"] = type
         data["value"] = '{"value":' + str(value) + "}"
         data["babyid"] = babyid
-        print(data)
+
         self._upload_information("event", data, token)
+
+        return data

@@ -71,7 +71,7 @@ class OAKParent(dai.Pipeline):
         """
         # Define a neural network that will make predictions based on the source frames
         nn = self.createMobileNetDetectionNetwork()
-        nn.setConfidenceThreshold(0.7)
+        nn.setConfidenceThreshold(0.5)
         nn.setBlobPath(model_path)
         nn.setNumInferenceThreads(2)
         nn.input.setBlocking(False)
@@ -365,8 +365,8 @@ class OAKParent(dai.Pipeline):
                 2,
             )
 
-        #cv2.imshow("rgb", show_frame)
-        #cv2.imshow("depth", depth_frame)
+        # cv2.imshow("rgb", show_frame)
+        # cv2.imshow("depth", depth_frame)
         return show_frame
 
     def get_process_streams(

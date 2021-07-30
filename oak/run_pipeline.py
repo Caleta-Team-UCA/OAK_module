@@ -1,7 +1,10 @@
 from multiprocessing import Process, Queue
 from time import time
+from numpy.lib.npyio import save
+import requests
 import typer
 import cv2
+import json
 import numpy as np
 import subprocess as sp
 
@@ -20,8 +23,10 @@ def show_cv2_window(
     pipeline_img_queue,
     plot_img_queue,
     instruction_queue,
+    bpm_queue,
 ):
     cv2.namedWindow(win_name, cv2.WINDOW_AUTOSIZE)
+    bpm = 0
     while True:
         pipeline_img = pipeline_img_queue.get()
         plot_img = plot_img_queue.get()
@@ -46,11 +51,31 @@ def show_cv2_window(
         )
 
         new_image[0:, 0 : pipeline_img.shape[1], :3] = pipeline_img
+        x1_plot = 0
+        x2_plot = plot_img.shape[0]
+        y1_plot = pipeline_img.shape[1]
+        y2_plot = pipeline_img.shape[1] + plot_img.shape[1]
         new_image[
-            0 : plot_img.shape[0],
-            pipeline_img.shape[1] : pipeline_img.shape[1] + plot_img.shape[1],
+            x1_plot:x2_plot,
+            y1_plot:y2_plot,
             :3,
         ] = plot_img
+
+        if not bpm_queue.empty():
+            bpm = bpm_queue.get()
+
+        new_image = cv2.putText(
+            new_image,
+            f"{int(bpm)} bpm",
+            (
+                y1_plot + int((y2_plot - y1_plot) / 8),
+                x2_plot + int((x2_plot - x1_plot) / 8),
+            ),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 0, 0),
+            2,
+        )
 
         cv2.imshow(win_name, new_image)
         key = cv2.waitKey(1)
@@ -97,18 +122,19 @@ def push_frame(frame_queue):
             p.stdin.write(frame.tostring())
 
 
-RASPBERRY_RESOLUTION = (720, 1280)
+RASPBERRY_RESOLUTION = (1080, 1920)
 
 
 def run_pipeline(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
-    video_path: str = "videos_3_cams/8",
-    frequency: float = 5,
+    video_path: str = "videos_3_cams/22",
+    frequency: float = 20,
     plot_results: bool = True,
     post_server: bool = True,
     stream: bool = True,
+    save_results: bool = True,
     server_url: str = "http://vai.uca.es",
     server_port: str = "5000",
 ):
@@ -152,6 +178,7 @@ def run_pipeline(
         pipeline_img_queue = Queue()
         plot_img_queue = Queue()
         instruction_queue = Queue()
+        bpm_queue = Queue()
         show_process = Process(
             target=show_cv2_window,
             args=(
@@ -160,6 +187,7 @@ def run_pipeline(
                 pipeline_img_queue,
                 plot_img_queue,
                 instruction_queue,
+                bpm_queue,
             ),
         )
         show_process.start()
@@ -174,13 +202,20 @@ def run_pipeline(
     if post_server:
         post_server = ServerPost(server_url, server_port)
 
+    if save_results:
+        post_list = []
+        video_images = []
+
     start_time = time()
     generator = processor.get(**processor_parameters)
 
     plot_img = plot_series.update("movavg")
     while True:
-        next(generator)
-        result, pipeline_image = generator.send(breath.get_roi_corners)
+        try:
+            next(generator)
+            result, pipeline_image = generator.send(breath.get_roi_corners)
+        except StopIteration:
+            break
 
         # Process activity
         if result.body_detection is not None and result.face_detection is not None:
@@ -202,28 +237,34 @@ def run_pipeline(
         if delay >= frequency:
             if plot_results:
                 plot_img = plot_series.update("movavg")
+                bpm_queue.put(breath.get_bpm(delay))
 
             if post_server:
-                post_server.save(
+                activity_data = post_server.save(
                     ServerPost.TYPE_ACTIVITY,
                     act.dict_scores,
                     "1",
                     "F9qkMQ1151Xn7k7Q5CR3",
                 )
 
-                post_server.save(
+                respiration_data = post_server.save(
                     ServerPost.TYPE_RESPIRATION,
                     breath.get_bpm(delay),
                     "1",
                     "F9qkMQ1151Xn7k7Q5CR3",
                 )
 
-                post_server.save(
+                stress_data = post_server.save(
                     ServerPost.TYPE_STRESS,
                     stre.score.mean() * 100,
                     "1",
                     "F9qkMQ1151Xn7k7Q5CR3",
                 )
+
+                if save_results:
+                    post_list.append(activity_data)
+                    post_list.append(respiration_data)
+                    post_list.append(stress_data)
 
             act.restart_series()
             stre.restart_series()
@@ -236,6 +277,7 @@ def run_pipeline(
 
         if stream:
             streaming_queue.put(result.display)
+            video_images.append(result.display)
 
         if plot_results:
             pipeline_img_queue.put(pipeline_image)
@@ -261,6 +303,24 @@ def run_pipeline(
                 breath.width_roi += 1
             elif key == ord("c"):
                 plot_series.clear()
+
+    stream_process.terminate()
+    show_process.terminate()
+
+    if save_results:
+        with open("results/requests.json", "w") as f:
+            f.write(json.dumps(post_list))
+
+        video_writer = cv2.VideoWriter(
+            "results/video_processed.avi",
+            cv2.VideoWriter_fourcc("M", "J", "P", "G"),
+            15,
+            (video_images[0].shape[1], video_images[0].shape[0]),
+        )
+        for img in video_images:
+            video_writer.write(img)
+
+        video_writer.release()
 
 
 if __name__ == "__main__":
