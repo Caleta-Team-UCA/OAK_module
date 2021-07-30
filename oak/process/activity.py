@@ -92,7 +92,8 @@ class Activity(ProcessBase):
 
     @property
     def legs(self):
-        ser = self.ser_down
+        ser = self.ser_down - 2.5
+        ser[ser < 0] = 0
         ser[ser > 1] = 1
         return ser
 
