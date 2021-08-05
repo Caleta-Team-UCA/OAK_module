@@ -80,13 +80,13 @@ class Activity(ProcessBase):
 
     @property
     def arm_right(self):
-        ser = np.sqrt(np.power(self.ser_right, 2) + np.power(self.ser_up, 2))
+        ser = np.abs(self.ser_right)
         ser[ser > 1] = 1
         return ser
 
     @property
     def arm_left(self):
-        ser = np.sqrt(np.power(self.ser_left, 2) + np.power(self.ser_up, 2))
+        ser = np.abs(self.ser_left)
         ser[ser > 1] = 1
         return ser
 
