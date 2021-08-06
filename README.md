@@ -26,7 +26,7 @@ With the OAK camera plugged into your device, and the `oak` environment active (
 python demo_video.py
 ```
 
-By default, the script will load the session stored in the [demo folder](demo). This session last 20 seconds and it consist on three videos, each recorded by a different camera of the OAK device.
+The script will load the session stored in the [demo folder](demo). This session last 20 seconds and it consist on three videos, each recorded by a different camera of the OAK device.
 A window will appear on screen, showing the video from the center camera. When the neonate is detected, the script draws a bounding box around their face, and other surrounding the body.
 The script also plots three graphs next to the image. Each graph shows a different score on real-time:
 - Stress score (between 0 and 1)
