@@ -16,25 +16,30 @@ pip-compile --extra=dev
 
 ## Structure
 
-![Classes diagram](classes_diagram.png?raw=true)
+![Classes diagram](img/classes_diagram.png?raw=true)
 
 ### Scripts
 
-With the OAK camera plugged into your device, run the following command from the root folder:
+With the OAK camera plugged into your device, and the `oak` environment active (see [Environment configuration](#environment-configuration)) run the following command from the root folder:
 
 ```
-python oak/run_pipeline.py
+python demo_video.py
 ```
 
-The camera will start recording, and you will see on screen two windows. The first shows the image on real-time, with a bounding box surrounding the face and other around the body. The second window depicts the depth map of the very same image.
+By default, the script will load the session stored in the [demo folder](demo). This session last 20 seconds and it consist on three videos, each recorded by a different camera of the OAK device.
+A window will appear on screen, showing the video from the center camera. When the neonate is detected, the script draws a bounding box around their face, and other surrounding the body.
+The script also plots three graphs next to the image. Each graph shows a different score on real-time:
+- Stress score (between 0 and 1)
+- Limb stretch scores (between 0 and 1)
+- Breath
 
-Instead of recording on real-time, you can feed a video to the script:
+Instead of feeding a video to the script, you can record on real-time:
 
 ```
-python oak/run_pipeline.py --video-path PATH
+python demo_cam.py
 ```
 
-In this case, only one window is shown: the image with the bounding boxes. No depth map can be computed from a pre-recorded video.
+To stop the record, press "q" then "Ctrl + C".
 
 ## Raspberry installation
 First install all libraries:
