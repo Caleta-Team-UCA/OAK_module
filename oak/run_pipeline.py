@@ -129,7 +129,7 @@ def run_pipeline(
     body_path_model: str = "models/mobilenet-ssd_openvino_2021.2_8shave.blob",
     face_path_model: str = "models/face-detection-openvino_2021.2_4shave.blob",
     stress_path_model: str = "models/mobilenet_stress_classifier_2021.2.blob",
-    video_path: str = "videos_3_cams/22",
+    video_path: str = "demo/sample",
     frequency: float = 20,
     plot_results: bool = True,
     post_server: bool = True,
